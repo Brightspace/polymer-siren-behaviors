@@ -1,4 +1,4 @@
-/* global suite, test, fixture, expect, setup, teardown, sinon, stubWhitelist */
+/* global suite, test, fixture, expect, setup, teardown, sinon */
 
 'use strict';
 
@@ -16,7 +16,6 @@ suite('entity-behavior', function() {
 				done();
 			}
 		}
-		stubWhitelist();
 		element.addEventListener('d2l-siren-entity-changed', waitForLoad);
 		element.href = 'static-data/199.json';
 		element.token = 'foozleberries';

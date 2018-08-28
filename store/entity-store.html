@@ -1,80 +1,17 @@
 <link rel="import" href="../../d2l-fetch/d2l-fetch.html">
 <link rel="import" href="../../siren-parser-import/siren-parser.html">
 
-<script>
-(function() {
-	'use strict';
-
-	function EntityMap() {
-		this._store = new Map();
-		this._cleanEntityId = function(entityId) {
-			return (entityId || '').split('?')[0];
-		};
-	}
-
-	EntityMap.prototype.set = function(entityId, value) {
-		this._store.set(this._cleanEntityId(entityId), value);
-		return this;
-	};
-
-	EntityMap.prototype.get = function(entityId) {
-		return this._store.get(this._cleanEntityId(entityId));
-	};
-
-	EntityMap.prototype.has = function(entityId) {
-		return this._store.has(this._cleanEntityId(entityId));
-	};
-
-	EntityMap.prototype.delete = function(entityId) {
-		return this._store.delete(this._cleanEntityId(entityId));
-	};
+<script type="module">
+	import { EntityStore } from './redux-entity-store.js';
+	import { fetchEntityIfNeeded } from './redux-entity-fetch.js';
+	import { updateEntity } from './redux-entity-update.js';
+	import { clearStore } from './redux-clear.js';
+	import { parseLinkHeader } from './parse-link-header';
 
 	window.D2L = window.D2L || {};
 	window.D2L.Siren = window.D2L.Siren || {};
 
-	window.D2L.Siren.EntityMap = EntityMap;
-
 	window.D2L.Siren.EntityStore = {
-		_store: new Map(),
-
-		_listeners: new Map(),
-
-		_invalidationListeners: new Set(),
-
-		_initContainer: function(map, entityId, token, init) {
-			const lowerCaseToken = token.toLowerCase();
-			const lowerCaseEntityId = entityId.toLowerCase();
-
-			if (!map.has(lowerCaseToken)) {
-				map.set(lowerCaseToken, new EntityMap());
-			}
-			var entityMap = map.get(lowerCaseToken);
-			if (init && !entityMap.has(lowerCaseEntityId)) {
-				entityMap.set(lowerCaseEntityId, init);
-			}
-			return entityMap.get(lowerCaseEntityId);
-		},
-
-		addListener: function(entityId, token, listener) {
-
-			if (!entityId || typeof token !== 'string' || typeof listener !== 'function') {
-				return;
-			}
-
-			this._initContainer(this._listeners, entityId, token, new Set()).add(listener);
-			return function() {
-				this.removeListener(entityId, token, listener);
-			}.bind(this);
-		},
-
-		addInvalidationListener: function(listener) {
-			this._invalidationListeners.add(listener);
-		},
-
-		removeInvalidationListener: function(listener) {
-			this._invalidationListeners.delete(listener);
-		},
-
 		// This newer version of fetch uses d2l-fetch directly so we can set
 		// appropriate headers to bypass caching done by the d2l-fetch middleware chain
 		// The intention is to replace the fetch implementation that uses d2l-fetch-siren-entity-behavior with this
@@ -84,162 +21,53 @@
 		// updating the UI more consistently when dependent entities change as a result of Siren
 		// actions.
 		fetch: function(entityId, token, bypassCache) {
-			const lowerCaseToken = token.toLowerCase();
-			const lowerCaseEntityId = entityId.toLowerCase();
-
-			var entity = this._initContainer(this._store, entityId, token);
-			if (!entity || bypassCache) {
-
-				var headers = new Headers();
-				token && headers.set('Authorization', 'Bearer ' + token);
-
-				if (bypassCache) {
-					headers.set('pragma', 'no-cache');
-					headers.set('cache-control', 'no-cache');
-				}
-
-				var request = window.d2lfetch.fetch(entityId, {
-					headers: headers
-				})
-				.then(function(response) {
-					if (response.ok) {
-						return response.json();
+			let unsubscribe;
+			function subscription(resolve, reject) {
+				const state = EntityStore.getState();
+				const entitiesByToken = state.entitiesByHref[entityId];
+				const entity = entitiesByToken && entitiesByToken[token];
+				if (entity && !entity.isFetching) {
+					if (entity.error) {
+						reject(entity.error);
+					} else {
+						resolve(window.D2L.Hypermedia.Siren.Parse(entity.entity));
 					}
-					return Promise.reject(response.status);
-				})
-					.then(function(body) {
-						var entity = window.D2L.Hypermedia.Siren.Parse(body);
-						this.update(entityId, token, entity);
-						if (bypassCache) {
-							this._invalidationListeners.forEach(function(listener) {
-								listener(entityId, token, entity);
-							});
-						}
-						return this._store.get(lowerCaseToken).get(lowerCaseEntityId);
-					}.bind(this))
-					.catch(function(err) {
-						this.setError(entityId, token, err);
-						return this._store.get(lowerCaseToken).get(lowerCaseEntityId);
-					}.bind(this));
-
-				this._store.get(lowerCaseToken).set(lowerCaseEntityId, {
-					status: 'fetching',
-					entity: null,
-					request: request
-				});
-
-				return request;
+					unsubscribe();
+				}
 			}
 
-			if (entity.request) {
-				return entity.request;
-			} else {
-				return new Promise(function(resolve) {
-					this._notify(lowerCaseEntityId, lowerCaseToken, entity.entity);
-					resolve(entity);
-				}.bind(this));
-			}
+			const promise = new Promise((resolve, reject) => {
+				unsubscribe = EntityStore.subscribe(() => subscription(resolve, reject));
+				EntityStore.dispatch(fetchEntityIfNeeded(entityId, token, bypassCache))
+					.catch(() => {})
+					.then(() => subscription(resolve, reject));
+			});
+			return promise;
 		},
 
 		update: function(entityId, token, entity) {
-			const lowerCaseToken = token.toLowerCase();
-			const lowerCaseEntityId = entityId.toLowerCase();
-
-			this._initContainer(this._store, lowerCaseEntityId, lowerCaseToken);
-			return new Promise(function(resolve) {
-				const entities = this.expand(entityId, entity);
-				entities.forEach(function(entity) {
-					this._store.get(lowerCaseToken).set(entity.key.toLowerCase(), {
-						status: '',
-						entity: entity.value,
-						request: null
-					});
-					this._notify(entity.key, token, entity.value);
-				}.bind(this));
-
-				resolve(entity);
-			}.bind(this));
-		},
-
-		expand: function(entityId, entity) {
-			const entityIndex = new Set();
-			const expandEntities = [];
-			const entities = [];
-			expandEntities.push(entity);
-			entityIndex.add(entityId);
-			entities.push({
-				key: entityId,
-				value: entity
-			});
-
-			while (expandEntities.length > 0) {
-				const expandEntity = expandEntities.shift();
-				(expandEntity.entities || []).forEach(function(entity) {
-					expandEntities.push(entity);
-				});
-
-				if (!expandEntity.href && expandEntity.hasLinkByRel('self')) {
-					const href = expandEntity.getLinkByRel('self').href.toLowerCase();
-					if (!entityIndex.has(href)) {
-						entityIndex.add(href);
-						entities.push({
-							key: href,
-							value: expandEntity
-						});
-					}
-				}
-			}
-			return entities;
-		},
-
-		setError: function(entityId, token, error) {
-			const lowerCaseToken = token.toLowerCase();
-			const lowerCaseEntityId = entityId.toLowerCase();
-
-			this._initContainer(this._store, entityId, token);
-			return new Promise(function(resolve) {
-
-				this._store.get(lowerCaseToken).set(lowerCaseEntityId, {
-					status: 'error',
-					entity: null,
-					error: error,
-					request: null
-				});
-				this._notifyError(entityId, token, error);
-
-				resolve(error);
-
-			}.bind(this));
-		},
-
-		removeListener: function(entityId, token, listener) {
-
-			if (!entityId || typeof token !== 'string' || typeof listener !== 'function' || !this._listeners) {
-				return;
-			}
-
-			this._initContainer(this._listeners, entityId, token, new Set()).delete(listener);
-
-		},
-
-		_notify: function(entityId, token, entity) {
-			const listenerSet = this._initContainer(this._listeners, entityId, token, new Set());
-			listenerSet.forEach(function(listener) {
-				listener(entity);
-			});
-		},
-
-		_notifyError: function(entityId, token, error) {
-			const listenerSet = this._initContainer(this._listeners, entityId, token, new Set());
-			listenerSet.forEach(function(listener) {
-				listener(null, error);
-			});
+			return EntityStore.dispatch(updateEntity(entityId, token, entity));
 		},
 
 		clear: function() {
-			this._store = new Map();
-			this._listeners = new Map();
-			this._invalidationListeners = new Set();
+			return EntityStore.dispatch(clearStore());
+		},
+
+		get: function(entityId, token) {
+			return new Promise((resolve, reject) => {
+				const state = EntityStore.getState();
+				const entitiesByToken = state.entitiesByHref[entityId];
+				const entity = entitiesByToken && entitiesByToken[token];
+				if (entity && !entity.isFetching) {
+					if (entity.error) {
+						reject(entity.error);
+					} else {
+						resolve(window.D2L.Hypermedia.Siren.Parse(entity.entity));
+					}
+				} else {
+					reject(new Error('Not fetched'));
+				}
+			});
 		},
 
 		// parse a Link header
@@ -250,35 +78,7 @@
 		// r['meta'] outputs https://example.org/.meta
 		//
 		parseLinkHeader: function(links) {
-			var linkexp = /<[^>]*>\s*(\s*;\s*[^\(\)<>@,;:"\/\[\]\?={} \t]+=(([^\(\)<>@,;:"\/\[\]\?={} \t]+)|("[^"]*")))*(,|$)/g;
-			var paramexp = /[^\(\)<>@,;:"\/\[\]\?={} \t]+=(([^\(\)<>@,;:"\/\[\]\?={} \t]+)|("[^"]*"))/g;
-
-			var matches = links.match(linkexp);
-			var _links = [];
-			for (var i = 0; i < matches.length; i++) {
-				var split = matches[i].split('>');
-				var href = split[0].substring(1);
-				_links.push({
-					href: href
-				});
-				var ps = split[1];
-				var s = ps.match(paramexp);
-				for (var j = 0; j < s.length; j++) {
-					var p = s[j];
-					var paramsplit = p.split('=');
-					var name = paramsplit[0];
-					var val = paramsplit[1].replace(/["']/g, '');
-					if (name === 'rel') {
-						var relsplit = val.split(' ');
-						_links[i][name] = relsplit;
-					} else {
-						_links[i][name] = val;
-					}
-				}
-			}
-			return _links;
+			return parseLinkHeader(links);
 		}
 	};
-})();
-
 </script>

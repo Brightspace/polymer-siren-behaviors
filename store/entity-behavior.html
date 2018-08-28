@@ -1,99 +1,11 @@
 <link rel="import" href="entity-store.html">
 
-<script>
-	// 'use strict';
+<script type="module">
+	import { EntityBehavior } from './entity-behavior.js';
 
 	window.D2L = window.D2L || {};
 	window.D2L.PolymerBehaviors = window.D2L.PolymerBehaviors || {};
 	window.D2L.PolymerBehaviors.Siren = window.D2L.PolymerBehaviors.Siren || {};
 
-	/*
-	* Behavior for fetching an entity when an href and token a present
-	* @polymerBehavior
-	*/
-	D2L.PolymerBehaviors.Siren.EntityBehavior = {
-		properties: {
-			/**
-			 * The href for this siren entity
-			 */
-			href: {
-				type: String,
-				reflectToAttribute: true
-			},
-
-			/**
-			 * The user access token
-			 */
-			token: {
-				type: String,
-			},
-
-			/**
-			 * The fetched siren entity
-			 */
-			entity: {
-				type: Object,
-				value: null,
-				notify: true,
-				observer: '_onEntityChanged',
-			},
-
-			_entityChangedHandler: {
-				type: Object,
-				value: function() { return this._entityChanged.bind(this); }
-			}
-		},
-
-		observers: [
-			'_fetchEntity(href, token)'
-		],
-
-		ready: function() {
-			this._entityChangedHandler = this._entityChanged.bind(this);
-		},
-
-		attached: function() {
-			this._fetchEntity(this.href, this.token);
-		},
-
-		detached: function() {
-			if (this.removeListener) {
-				this.removeListener();
-				this.removeListener = null;
-			}
-		},
-
-		_fetchEntity: function(href, token) {
-			if (!href || typeof token !== 'string') {
-				return;
-			}
-			if (this.removeListener) {
-				this.removeListener();
-			}
-			this.removeListener = window.D2L.Siren.EntityStore.addListener(href, token, this._entityChangedHandler);
-			window.D2L.Siren.EntityStore.fetch(href, token);
-		},
-
-		_entityChanged: function(entity, error) {
-			if (!error) {
-				if (entity !== this.entity) {
-					this.entity = entity;
-					this.fire('d2l-siren-entity-changed', { entity: entity });
-				}
-			} else {
-				this.fire('d2l-siren-entity-error', { error: error });
-			}
-		},
-
-		_onEntityChanged: function(entity, oldEntity) {
-			// default empty implementation
-		},
-
-		_getSelfLink: function(entity) {
-			if (entity) {
-				return entity.href || (entity.hasLinkByRel('self') ? entity.getLinkByRel('self').href : '');
-			}
-			return '';
-		}
-	};
+	D2L.PolymerBehaviors.Siren.EntityBehavior = EntityBehavior;
 </script>

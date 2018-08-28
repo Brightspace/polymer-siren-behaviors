@@ -1,4 +1,5 @@
 {
+  "parser": "babel-eslint",
   "extends": "brightspace/polymer-config",
   "globals": {
     "fastdom": false,

@@ -1,5 +1,5 @@
 <link rel="import" href="../polymer/polymer.html">
-<link rel="import" href="./entity-loading-behavior.html">
+<link rel="import" href="./store/entity-behavior.html">
 <link rel="import" href="../d2l-fastdom-import/fastdom.html">
 
 <dom-module id="siren-entity-loading">
@@ -56,7 +56,7 @@
 			},
 
 			behaviors: [
-				D2L.PolymerBehaviors.Siren.EntityLoadingBehavior
+				D2L.PolymerBehaviors.Siren.EntityBehavior
 			],
 
 			observers: [
@@ -64,7 +64,7 @@
 			],
 
 			_transition: function(loading, error, fetched) {
-				this.async(function() {
+				this.async(/* @this */function() {
 					var maxHeight = this.maxHeight || 10;
 					this._transitionElement(this.$$('.loading'), loading ? maxHeight : null, 'loading', true);
 					this._transitionElement(this.$$('.error'), error ? maxHeight : null, 'error');

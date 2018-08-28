@@ -12,41 +12,13 @@ suite('entity-store', function() {
 
 	teardown(function() {
 		sandbox.restore();
+		window.D2L.Siren.EntityStore.clear();
 	});
 
 	suite('smoke test', function() {
-
-		test('entity map', function(done) {
-			var testEntityId = 'http://localhost/1?linkedSubEntities=1';
-			var entityId = 'http://localhost/1';
-			var entityMap = new window.D2L.Siren.EntityMap();
-			entityMap.set(testEntityId, { id: 1});
-			var entity = entityMap.get(entityId);
-			expect(entity).not.to.be.null;
-			expect(entity.id).to.equal(1);
-			done();
-		});
-
-		test('can fetch leaf entity using listener', function(done) {
-			window.D2L.Siren.EntityStore.addListener(
-				'static-data/rubrics/organizations/text-only/199/groups/176/criteria/623/0.json',
-				'',
-				function(entity) {
-					var description = entity && entity.getSubEntityByClass('description').properties.html;
-					expect(description).to.equal('Proper use of grammar');
-					if (!done.done) {
-						done();
-						done.done = true;
-					}
-				});
-			window.D2L.Siren.EntityStore.fetch('static-data/rubrics/organizations/text-only/199/groups/176/criteria/623/0.json', '');
-		});
-
 		test('can fetch leaf entity using listener when self link does not match', function(done) {
-			window.D2L.Siren.EntityStore.addListener(
-				'static-data/rubrics/organizations/text-only/199/groups/176/criteria/623/0.json?foo=bar',
-				'',
-				function(entity) {
+			window.D2L.Siren.EntityStore.fetch('static-data/rubrics/organizations/text-only/199/groups/176/criteria/623/0.json?foo=bar', '')
+				.then(function(entity) {
 					var description = entity && entity.getSubEntityByClass('description').properties.html;
 					expect(description).to.equal('Proper use of grammar');
 					if (!done.done) {
@@ -54,13 +26,12 @@ suite('entity-store', function() {
 						done.done = true;
 					}
 				});
-			window.D2L.Siren.EntityStore.fetch('static-data/rubrics/organizations/text-only/199/groups/176/criteria/623/0.json?foo=bar', '');
 		});
 
 		test('can fetch leaf entity using promise', function(done) {
 			var request = window.D2L.Siren.EntityStore.fetch('static-data/rubrics/organizations/text-only/199/groups/176/criteria/623/0.json', '');
 			request.then(function(entity) {
-				var description = entity && entity.entity.getSubEntityByClass('description').properties.html;
+				var description = entity && entity.getSubEntityByClass('description').properties.html;
 				expect(description).to.equal('Proper use of grammar');
 				if (!done.done) {
 					done();
@@ -69,26 +40,10 @@ suite('entity-store', function() {
 			});
 		});
 
-		test('handles entity error using listener', function(done) {
-			window.D2L.Siren.EntityStore.addListener(
-				'static-data/rubrics/organizations/text-only/199/groups/176/criteria/623/UNKNOWN1.json',
-				'',
-				function(entity, error) {
-					expect(entity).to.be.null;
-					expect(error).to.equal(404);
-					if (!done.done) {
-						done();
-						done.done = true;
-					}
-				});
-			window.D2L.Siren.EntityStore.fetch('static-data/rubrics/organizations/text-only/199/groups/176/criteria/623/UNKNOWN1.json', '');
-		});
-
 		test('handles entity error using promise', function(done) {
 			var request = window.D2L.Siren.EntityStore.fetch('static-data/rubrics/organizations/text-only/199/groups/176/criteria/623/UNKNOWN2.json', '');
-			request.then(function(entity) {
-				expect(entity.status).to.equal('error');
-				expect(entity.error).to.equal(404);
+			request.catch(function(error) {
+				expect(error).to.equal(404);
 				if (!done.done) {
 					done();
 					done.done = true;
@@ -97,10 +52,11 @@ suite('entity-store', function() {
 		});
 
 		test('expands embedded entity children', function(done) {
-			window.D2L.Siren.EntityStore.addListener(
-				'static-data/rubrics/organizations/text-only/199/groups/176/criteria/623/0.json',
-				'',
-				function(entity) {
+			window.D2L.Siren.EntityStore.fetch('static-data/rubrics/organizations/text-only/199/groups/176/criteria/623.json', '')
+				.then(function() {
+					return window.D2L.Siren.EntityStore.get('static-data/rubrics/organizations/text-only/199/groups/176/criteria/623/0.json', '');
+				})
+				.then(function(entity) {
 					var description = entity && entity.getSubEntityByClass('description').properties.html;
 					expect(description).to.equal('Proper use of grammar');
 					if (!done.done) {
@@ -108,14 +64,14 @@ suite('entity-store', function() {
 						done.done = true;
 					}
 				});
-			window.D2L.Siren.EntityStore.fetch('static-data/rubrics/organizations/text-only/199/groups/176/criteria/623.json', '');
 		});
 
 		test('expands embedded entity descendants', function(done) {
-			window.D2L.Siren.EntityStore.addListener(
-				'static-data/rubrics/organizations/text-only/199/groups/176/criteria/623/0.json',
-				'',
-				function(entity) {
+			window.D2L.Siren.EntityStore.fetch('static-data/rubrics/organizations/text-only/199/groups/176/criteria.json', '')
+				.then(function() {
+					return window.D2L.Siren.EntityStore.get('static-data/rubrics/organizations/text-only/199/groups/176/criteria/623/0.json', '');
+				})
+				.then(function(entity) {
 					var description = entity && entity.getSubEntityByClass('description').properties.html;
 					expect(description).to.equal('Proper use of grammar');
 					if (!done.done) {
@@ -123,7 +79,6 @@ suite('entity-store', function() {
 						done.done = true;
 					}
 				});
-			window.D2L.Siren.EntityStore.fetch('static-data/rubrics/organizations/text-only/199/groups/176/criteria.json', '');
 		});
 
 		suite('link header parse', function() {

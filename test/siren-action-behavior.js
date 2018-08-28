@@ -1,4 +1,4 @@
-/* global suite, test, fixture, expect, setup, teardown, sinon, stubWhitelist */
+/* global suite, test, fixture, expect, setup, teardown, sinon */
 
 'use strict';
 
@@ -68,7 +68,6 @@ suite('siren-action-behavior', function() {
 		sandbox = sinon.sandbox.create();
 		element = fixture('basic');
 		element.token = 'foozleberries';
-		stubWhitelist();
 	});
 
 	teardown(function() {
