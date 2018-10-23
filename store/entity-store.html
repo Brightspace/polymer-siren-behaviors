@@ -56,16 +56,19 @@
 		},
 
 		addListener: function(entityId, token, listener) {
-			this._getToken(token).then(({cacheKey, tokenValue}) => {
+			return this._getToken(token).then(function (resolved) {
+				const cacheKey = resolved.cacheKey;
+				const tokenValue = resolved.tokenValue;
+
 				if (!entityId || (typeof cacheKey !== 'string' && typeof listener !== 'function')) {
 					return;
 				}
 
 				this._initContainer(this._listeners, entityId, cacheKey, new Set()).add(listener);
-				return function() {
+				return (function() {
 					this.removeListener(entityId, tokenValue, listener);
-				}.bind(this);
-			})
+				}).bind(this);
+			}.bind(this))
 		},
 
 		addInvalidationListener: function(listener) {
@@ -81,13 +84,33 @@
 				? token()
 				: Promise.resolve(token);
 
-			return tokenPromise.then( tokenValue => {
-				const { sub, tenantid, scope, actualsub = 'actual' } = JSON.parse(atob(tokenValue.split('.')[1]).toString())
-				const cacheKey = `${sub}-${tenantid}-${scope}-${actualsub}`;
+			const volatileClaims = ['exp', 'iat', 'jti', 'nbf'];
+
+			return tokenPromise.then(function(tokenValue) {
+				if( !tokenValue ) {
+					throw new Error('invalid token')
+				}
+
+				const tokenParts = tokenValue.split('.')
+
+				if( tokenParts.length < 3 ) {
+					throw new Error('invalid token')
+				}
+
+				const decoded = JSON.parse(atob(tokenParts[1]).toString());
+
+				const normalizedClaims = Object.keys(decoded)
+					.filter(function (val) { return volatileClaims.indexOf(val) === -1 })
+					.reduce(function (result, key) {
+						result[key] = decoded[key]
+						return result;
+					}, {})
+
+				const cacheKey = btoa(JSON.stringify(normalizedClaims)).toString('base64');
 
 				return {
-					cacheKey,
-					tokenValue
+					cacheKey: cacheKey,
+					tokenValue: tokenValue
 				}
 			})
 		},
@@ -100,7 +123,10 @@
 		// updating the UI more consistently when dependent entities change as a result of Siren
 		// actions.
 		fetch: function(entityId, token, bypassCache) {
-			return this._getToken(token).then(({cacheKey, tokenValue}) => {
+			return this._getToken(token).then(function(resolved) {
+				const cacheKey = resolved.cacheKey;
+				const tokenValue = resolved.tokenValue;
+
 				const lowerCaseToken = cacheKey.toLowerCase();
 				const lowerCaseEntityId = entityId.toLowerCase();
 
@@ -108,7 +134,7 @@
 				if (!entity || bypassCache) {
 
 					var headers = new Headers();
-					cacheKey && headers.set('Authorization', 'Bearer ' + tokenValue);
+					headers.set('Authorization', 'Bearer ' + tokenValue);
 
 					if (bypassCache) {
 						headers.set('pragma', 'no-cache');
@@ -118,26 +144,26 @@
 					var request = window.d2lfetch.fetch(entityId, {
 						headers: headers
 					})
-						.then((response) => {
+						.then(function(response) {
 							if (response.ok) {
 								return response.json();
 							}
 							return Promise.reject(response.status);
-						})
-						.then((body) => {
+						}.bind(this))
+						.then(function(body) {
 							var entity = window.D2L.Hypermedia.Siren.Parse(body);
 							this.update(entityId, tokenValue, entity);
 							if (bypassCache) {
-								this._invalidationListeners.forEach((listener) => {
+								this._invalidationListeners.forEach(function(listener) {
 									listener(entityId, cacheKey, entity);
 								});
 							}
 							return this._store.get(lowerCaseToken).get(lowerCaseEntityId);
-						})
-						.catch((err) => {
+						}.bind(this))
+						.catch(function(err) {
 							this.setError(entityId, tokenValue, err);
 							return this._store.get(lowerCaseToken).get(lowerCaseEntityId);
-						});
+						}.bind(this));
 
 					this._store.get(lowerCaseToken).set(lowerCaseEntityId, {
 						status: 'fetching',
@@ -151,16 +177,19 @@
 				if (entity.request) {
 					return entity.request;
 				} else {
-					return new Promise((resolve) => {
+					return new Promise(function(resolve) {
 						this._notify(lowerCaseEntityId, cacheKey, entity.entity);
 						resolve(entity);
-					});
+					}.bind(this));
 				}
-			});
+			}.bind(this));
 		},
 
 		get: function(entityId, token) {
-			return this._getToken(token).then(({ cacheKey, tokenValue }) => {
+			return this._getToken(token).then(function (resolved) {
+				const cacheKey = resolved.cacheKey;
+				const tokenValue = resolved.tokenValue;
+
 				const lowerCaseToken = cacheKey.toLowerCase();
 				const lowerCaseEntityId = entityId.toLowerCase();
 
@@ -170,11 +199,14 @@
 				} else {
 					return null;
 				}
-			});
+			}.bind(this));
 		},
 
 		update: function(entityId, token, entity) {
-			return this._getToken(token).then(({ cacheKey, tokenValue }) => {
+			return this._getToken(token).then(function (resolved) {
+				const cacheKey = resolved.cacheKey;
+				const tokenValue = resolved.tokenValue;
+
 				const lowerCaseToken = cacheKey.toLowerCase();
 				const lowerCaseEntityId = entityId.toLowerCase();
 
@@ -192,7 +224,7 @@
 
 					resolve(entity);
 				}.bind(this));
-			});
+			}.bind(this));
 		},
 
 		expand: function(entityId, entity) {
@@ -227,7 +259,10 @@
 		},
 
 		setError: function(entityId, token, error) {
-			return this._getToken(token).then(({ cacheKey, tokenValue }) => {
+			return this._getToken(token).then(function (resolved) {
+				const cacheKey = resolved.cacheKey;
+				const tokenValue = resolved.tokenValue;
+
 				const lowerCaseToken = cacheKey.toLowerCase();
 				const lowerCaseEntityId = entityId.toLowerCase();
 
@@ -245,17 +280,20 @@
 					resolve(error);
 
 				}.bind(this));
-			});
+			}.bind(this));
 		},
 
 		removeListener: function(entityId, token, listener) {
-			return this._getToken(token).then(({ cacheKey, tokenValue }) => {
+			return this._getToken(token).then(function (resolved) {
+				const cacheKey = resolved.cacheKey;
+				const tokenValue = resolved.tokenValue;
+
 				if (!entityId || typeof cacheKey !== 'string' || typeof listener !== 'function' || !this._listeners) {
 					return;
 				}
 
 				this._initContainer(this._listeners, entityId, cacheKey, new Set()).delete(listener);
-			});
+			}.bind(this));
 		},
 
 		_notify: function(entityId, cacheKey, entity) {
