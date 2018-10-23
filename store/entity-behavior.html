@@ -25,7 +25,7 @@
 			 * The user access token
 			 */
 			token: {
-				type: String,
+				type: Object,
 			},
 
 			/**
@@ -64,7 +64,7 @@
 		},
 
 		_fetchEntity: function(href, token) {
-			if (!href || typeof token !== 'string') {
+			if (!href || (typeof token !== 'string' && typeof token !== 'function')) {
 				return;
 			}
 			if (this.removeListener) {
