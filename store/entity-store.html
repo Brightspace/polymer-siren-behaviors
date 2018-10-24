@@ -88,13 +88,19 @@
 
 			return tokenPromise.then(function(tokenValue) {
 				if( !tokenValue ) {
-					throw new Error('invalid token')
+					return {
+						cacheKey: '',
+						tokenValue: ''
+					}
 				}
 
 				const tokenParts = tokenValue.split('.')
 
 				if( tokenParts.length < 3 ) {
-					throw new Error('invalid token')
+					return {
+						cacheKey: tokenValue,
+						tokenValue: tokenValue
+					}
 				}
 
 				const decoded = JSON.parse(atob(tokenParts[1]).toString());
@@ -134,7 +140,7 @@
 				if (!entity || bypassCache) {
 
 					var headers = new Headers();
-					headers.set('Authorization', 'Bearer ' + tokenValue);
+					tokenValue && headers.set('Authorization', 'Bearer ' + tokenValue);
 
 					if (bypassCache) {
 						headers.set('pragma', 'no-cache');
