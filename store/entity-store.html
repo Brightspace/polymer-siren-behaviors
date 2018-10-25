@@ -112,7 +112,7 @@
 						return result;
 					}, {})
 
-				const cacheKey = btoa(JSON.stringify(normalizedClaims)).toString('base64');
+				const cacheKey = btoa(JSON.stringify(normalizedClaims));
 
 				return {
 					cacheKey: cacheKey,
