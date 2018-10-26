@@ -48,7 +48,7 @@
 			if (!map.has(lowerCaseCacheKey)) {
 				map.set(lowerCaseCacheKey, new EntityMap());
 			}
-			var entityMap = map.get(lowerCaseCacheKey);
+			const entityMap = map.get(lowerCaseCacheKey);
 			if (init && !entityMap.has(lowerCaseEntityId)) {
 				entityMap.set(lowerCaseEntityId, init);
 			}
@@ -66,7 +66,7 @@
 
 				this._initContainer(this._listeners, entityId, cacheKey, new Set()).add(listener);
 				return (function() {
-					this.removeListener(entityId, tokenValue, listener);
+					this.removeListener(entityId, resolved, listener);
 				}).bind(this);
 			}.bind(this))
 		},
@@ -84,41 +84,45 @@
 				? token()
 				: Promise.resolve(token);
 
-			const volatileClaims = ['exp', 'iat', 'jti', 'nbf'];
-
 			return tokenPromise.then(function(tokenValue) {
 				if( !tokenValue ) {
 					return {
 						cacheKey: '',
 						tokenValue: ''
-					}
+					};
 				}
 
-				const tokenParts = tokenValue.split('.')
+				// Avoid parse work if we've already done it
+				if( typeof tokenValue === 'object' && tokenValue.cacheKey && tokenValue.tokenValue ) {
+					return tokenValue;
+				}
+
+				const tokenParts = tokenValue.split('.');
 
 				if( tokenParts.length < 3 ) {
 					return {
 						cacheKey: tokenValue,
 						tokenValue: tokenValue
-					}
+					};
 				}
 
 				const decoded = JSON.parse(atob(tokenParts[1]).toString());
 
+				const volatileClaims = ['exp', 'iat', 'jti', 'nbf'];
 				const normalizedClaims = Object.keys(decoded)
 					.filter(function (val) { return volatileClaims.indexOf(val) === -1 })
 					.reduce(function (result, key) {
 						result[key] = decoded[key]
 						return result;
-					}, {})
+					}, {});
 
 				const cacheKey = btoa(JSON.stringify(normalizedClaims));
 
 				return {
-					cacheKey: cacheKey,
+					cacheKey: cacheKey.toLowerCase(),
 					tokenValue: tokenValue
-				}
-			})
+				};
+			});
 		},
 		// This newer version of fetch uses d2l-fetch directly so we can set
 		// appropriate headers to bypass caching done by the d2l-fetch middleware chain
@@ -133,13 +137,12 @@
 				const cacheKey = resolved.cacheKey;
 				const tokenValue = resolved.tokenValue;
 
-				const lowerCaseCacheKey = cacheKey.toLowerCase();
 				const lowerCaseEntityId = entityId.toLowerCase();
 
-				var entity = this._initContainer(this._store, entityId, cacheKey);
+				const entity = this._initContainer(this._store, entityId, cacheKey);
 				if (!entity || bypassCache) {
 
-					var headers = new Headers();
+					const headers = new Headers();
 					tokenValue && headers.set('Authorization', 'Bearer ' + tokenValue);
 
 					if (bypassCache) {
@@ -147,7 +150,7 @@
 						headers.set('cache-control', 'no-cache');
 					}
 
-					var request = window.d2lfetch.fetch(entityId, {
+					const request = window.d2lfetch.fetch(entityId, {
 						headers: headers
 					})
 						.then(function(response) {
@@ -157,21 +160,21 @@
 							return Promise.reject(response.status);
 						}.bind(this))
 						.then(function(body) {
-							var entity = window.D2L.Hypermedia.Siren.Parse(body);
-							this.update(entityId, tokenValue, entity);
+							const entity = window.D2L.Hypermedia.Siren.Parse(body);
+							this.update(entityId, resolved, entity);
 							if (bypassCache) {
 								this._invalidationListeners.forEach(function(listener) {
 									listener(entityId, cacheKey, entity);
 								});
 							}
-							return this._store.get(lowerCaseCacheKey).get(lowerCaseEntityId);
+							return this._store.get(cacheKey).get(lowerCaseEntityId);
 						}.bind(this))
 						.catch(function(err) {
-							this.setError(entityId, tokenValue, err);
-							return this._store.get(lowerCaseCacheKey).get(lowerCaseEntityId);
+							this.setError(entityId, resolved, err);
+							return this._store.get(cacheKey).get(lowerCaseEntityId);
 						}.bind(this));
 
-					this._store.get(lowerCaseCacheKey).set(lowerCaseEntityId, {
+					this._store.get(cacheKey).set(lowerCaseEntityId, {
 						status: 'fetching',
 						entity: null,
 						request: request
@@ -183,10 +186,8 @@
 				if (entity.request) {
 					return entity.request;
 				} else {
-					return new Promise(function(resolve) {
-						this._notify(lowerCaseEntityId, cacheKey, entity.entity);
-						resolve(entity);
-					}.bind(this));
+					this._notify(lowerCaseEntityId, cacheKey, entity.entity);
+					return entity;
 				}
 			}.bind(this));
 		},
@@ -195,7 +196,7 @@
 			return this._getToken(token).then(function (resolved) {
 				const cacheKey = resolved.cacheKey;
 
-				var entity = this._initContainer(this._store, entityId, cacheKey);
+				const entity = this._initContainer(this._store, entityId, cacheKey);
 				if (entity) {
 					return entity.entity;
 				} else {
@@ -207,24 +208,21 @@
 		update: function(entityId, token, entity) {
 			return this._getToken(token).then(function (resolved) {
 				const cacheKey = resolved.cacheKey;
-
-				const lowerCaseCacheKey = cacheKey.toLowerCase();
 				const lowerCaseEntityId = entityId.toLowerCase();
 
-				this._initContainer(this._store, lowerCaseEntityId, lowerCaseCacheKey);
-				return new Promise(function(resolve) {
-					const entities = this.expand(entityId, entity);
-					entities.forEach(function(entity) {
-						this._store.get(lowerCaseCacheKey).set(entity.key.toLowerCase(), {
-							status: '',
-							entity: entity.value,
-							request: null
-						});
-						this._notify(entity.key, cacheKey, entity.value);
-					}.bind(this));
+				this._initContainer(this._store, lowerCaseEntityId, cacheKey);
 
-					resolve(entity);
+				const entities = this.expand(entityId, entity);
+				entities.forEach(function(entity) {
+					this._store.get(cacheKey).set(entity.key.toLowerCase(), {
+						status: '',
+						entity: entity.value,
+						request: null
+					});
+					this._notify(entity.key, cacheKey, entity.value);
 				}.bind(this));
+
+				return entity;
 			}.bind(this));
 		},
 
@@ -263,23 +261,17 @@
 			return this._getToken(token).then(function (resolved) {
 				const cacheKey = resolved.cacheKey;
 
-				const lowerCaseCacheKey = cacheKey.toLowerCase();
 				const lowerCaseEntityId = entityId.toLowerCase();
 
 				this._initContainer(this._store, entityId, cacheKey);
-				return new Promise(function(resolve) {
-
-					this._store.get(lowerCaseCacheKey).set(lowerCaseEntityId, {
-						status: 'error',
-						entity: null,
-						error: error,
-						request: null
-					});
-					this._notifyError(entityId, cacheKey, error);
-
-					resolve(error);
-
-				}.bind(this));
+				this._store.get(cacheKey).set(lowerCaseEntityId, {
+					status: 'error',
+					entity: null,
+					error: error,
+					request: null
+				});
+				this._notifyError(entityId, cacheKey, error);
+				return error;
 			}.bind(this));
 		},
 
