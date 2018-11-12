@@ -8,6 +8,7 @@ suite('entity-store', function() {
 
 	setup(function() {
 		sandbox = sinon.sandbox.create();
+		window.D2L.Siren.EntityStore.clear();
 	});
 
 	teardown(function() {
