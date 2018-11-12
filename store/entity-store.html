@@ -224,8 +224,10 @@
 						entity: entity.value,
 						request: null
 					});
+				}, this);
+				entities.forEach(function(entity) {
 					this._notify(entity.key, cacheKey, entity.value);
-				}.bind(this));
+				}, this);
 
 				return entity;
 			}.bind(this));
