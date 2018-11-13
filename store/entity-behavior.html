@@ -73,8 +73,8 @@
 			window.D2L.Siren.EntityStore.addListener(href, token, this._entityChangedHandler)
 				.then(function(removeListener) {
 					this.removeListener = removeListener;
+					window.D2L.Siren.EntityStore.fetch(href, token);
 				}.bind(this));
-			window.D2L.Siren.EntityStore.fetch(href, token);
 		},
 
 		_entityChanged: function(entity, error) {
