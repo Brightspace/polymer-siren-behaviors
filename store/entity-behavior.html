@@ -92,13 +92,14 @@
 		},
 
 		_entityChanged: function(entity, error) {
-			if (!error) {
-				if (entity !== this.entity) {
-					this.entity = entity;
-					this.fire('d2l-siren-entity-changed', { entity: entity });
-				}
-			} else {
+			if (error) {
 				this.fire('d2l-siren-entity-error', { error: error });
+				return;
+			}
+
+			if (entity !== this.entity) {
+				this.entity = entity;
+				this.fire('d2l-siren-entity-changed', { entity: entity });
 			}
 		},
 
