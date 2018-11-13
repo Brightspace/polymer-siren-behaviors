@@ -89,5 +89,17 @@ suite('entity-behavior', function() {
 			element.token = 'b';
 			element.token = 'c';
 		});
+
+		test('does not continually call removeListener as details change', function() {
+			var remove = sandbox.stub();
+
+			element.removeListener = remove;
+
+			element.token = 'a';
+			element.token = 'b';
+			element.token = 'c';
+
+			expect(remove.callCount).to.equal(1);
+		});
 	});
 });

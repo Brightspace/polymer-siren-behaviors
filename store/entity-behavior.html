@@ -67,9 +67,12 @@
 			if (!href || (typeof token !== 'string' && typeof token !== 'function')) {
 				return;
 			}
+
 			if (this.removeListener) {
 				this.removeListener();
+				this.removeListener = null;
 			}
+
 			window.D2L.Siren.EntityStore
 				.addListener(href, token, this._entityChangedHandler)
 				.then(function(removeListener) {
