@@ -21,7 +21,7 @@
 					}
 				};
 			});
-			this.queueEnd.then(taskRunner).catch(taskRunner);
+			this.queueEnd.then(taskRunner, taskRunner);
 			this.queueEnd = promise;
 			return promise;
 		}
