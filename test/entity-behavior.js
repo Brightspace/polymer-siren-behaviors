@@ -66,5 +66,28 @@ suite('entity-behavior', function() {
 			element.addEventListener('d2l-siren-entity-changed', waitForLoad);
 			element.token = 'foozleberries*foozleberries';
 		});
+
+		test('old listeners removed as details change', function(done) {
+			var remove = sandbox.stub();
+			var add = sandbox.stub(window.D2L.Siren.EntityStore, 'addListener', function() {
+				if (add.callCount === 3) {
+					// put ourselves into the task queue so our checks hppaen
+					// "later". Whether this works will depend on task setup in
+					// the actually code
+					Promise
+						.resolve()
+						.then(function() {
+							expect(remove.callCount).to.equal(2);
+						})
+						.then(done, done);
+				}
+
+				return Promise.resolve(remove);
+			});
+
+			element.token = 'a';
+			element.token = 'b';
+			element.token = 'c';
+		});
 	});
 });

@@ -70,8 +70,19 @@
 			if (this.removeListener) {
 				this.removeListener();
 			}
-			window.D2L.Siren.EntityStore.addListener(href, token, this._entityChangedHandler)
+			window.D2L.Siren.EntityStore
+				.addListener(href, token, this._entityChangedHandler)
 				.then(function(removeListener) {
+					if (this.href !== href) {
+						removeListener();
+						return;
+					}
+
+					if (this.token !== token) {
+						removeListener();
+						return;
+					}
+
 					this.removeListener = removeListener;
 					window.D2L.Siren.EntityStore.fetch(href, token);
 				}.bind(this));
