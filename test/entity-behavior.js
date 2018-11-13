@@ -67,27 +67,25 @@ suite('entity-behavior', function() {
 			element.token = 'foozleberries*foozleberries';
 		});
 
-		test('old listeners removed as details change', function(done) {
-			var remove = sandbox.stub();
-			var add = sandbox.stub(window.D2L.Siren.EntityStore, 'addListener', function() {
-				if (add.callCount === 3) {
-					// put ourselves into the task queue so our checks hppaen
-					// "later". Whether this works will depend on task setup in
-					// the actually code
-					Promise
-						.resolve()
-						.then(function() {
-							expect(remove.callCount).to.equal(2);
-						})
-						.then(done, done);
-				}
+		test('old listeners removed as details change', function() {
+			window.D2L.Siren.EntityStore.clear();
+			element.removeListener = null;
 
-				return Promise.resolve(remove);
-			});
+			var add = sandbox.spy(window.D2L.Siren.EntityStore, 'addListener');
+			var remove = sandbox.spy(window.D2L.Siren.EntityStore, 'removeListener');
 
-			element.token = 'a';
-			element.token = 'b';
-			element.token = 'c';
+			var tokenPayload = btoa(JSON.stringify({ sub: 123 }));
+
+			element.token = 'a.' + tokenPayload + '.a';
+			element.token = 'a.' + tokenPayload + '.b';
+			element.token = 'a.' + tokenPayload + '.c';
+
+			return window.D2L.Siren.EntityStore
+				.fetch(element.href, element.token)
+				.then(function() {
+					expect(add.callCount).to.equal(3);
+					expect(remove.callCount).to.equal(2);
+				});
 		});
 
 		test('does not continually call removeListener as details change', function() {

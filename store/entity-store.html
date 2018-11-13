@@ -64,7 +64,12 @@
 					return;
 				}
 
-				this._initContainer(this._listeners, entityId, cacheKey, new Set()).add(listener);
+				const registrations = this._initContainer(this._listeners, entityId, cacheKey, new Map());
+				if (!registrations.has(listener)) {
+					registrations.set(listener, new Set());
+				}
+				registrations.get(listener).add(tokenValue);
+
 				return (function() {
 					this.removeListener(entityId, resolved, listener);
 				}).bind(this);
@@ -285,25 +290,49 @@
 		removeListener: function(entityId, token, listener) {
 			return this._getToken(token).then(function (resolved) {
 				const cacheKey = resolved.cacheKey;
+				const tokenValue = resolved.tokenValue;
 
 				if (!entityId || typeof cacheKey !== 'string' || typeof listener !== 'function' || !this._listeners) {
 					return;
 				}
 
-				this._initContainer(this._listeners, entityId, cacheKey, new Set()).delete(listener);
+				const registrations = this._initContainer(this._listeners, entityId, cacheKey, new Map());
+
+				const tokenValues = registrations.get(listener);
+				if (!tokenValues) {
+					return;
+				}
+
+				// try to remove this specific registration, since a listener could be
+				// registered with multiple tokens (hopefully temporarily) despite sharing the same
+				// cache key (which is an internal detail)
+				if (!tokenValues.delete(tokenValue)) {
+					// we weren't aware of this particularly tokenValue for this listener, so
+					// assuemedly the component called removeListener directly with its latest
+					// values instead of the "removeListener" function returned by addListener.
+					// component is probably unregistering, so remove the listener entirely
+					registrations.remove(listener);
+					return;
+				}
+
+				// no registrations left for this listener, remove it from the list
+				if (tokenValues.size === 0) {
+					registrations.remove(listener);
+					return;
+				}
 			}.bind(this));
 		},
 
 		_notify: function(entityId, cacheKey, entity) {
-			const listenerSet = this._initContainer(this._listeners, entityId, cacheKey, new Set());
-			listenerSet.forEach(function(listener) {
+			const registrations = this._initContainer(this._listeners, entityId, cacheKey, new Map());
+			Array.from(registrations.keys()).forEach(function(listener) {
 				listener(entity);
 			});
 		},
 
 		_notifyError: function(entityId, cacheKey, error) {
-			const listenerSet = this._initContainer(this._listeners, entityId, cacheKey, new Set());
-			listenerSet.forEach(function(listener) {
+			const registrations = this._initContainer(this._listeners, entityId, cacheKey, new Map());
+			Array.from(registrations.keys()).forEach(function(listener) {
 				listener(null, error);
 			});
 		},
