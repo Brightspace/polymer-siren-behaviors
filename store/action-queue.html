@@ -8,22 +8,21 @@
 	window.D2L.Siren.ActionQueue = {
 		queueEnd: Promise.resolve(),
 
-		// Task needs to be a function that returns a promise
 		enqueue: function(task) {
-			var taskRunner;
-			var promise = new Promise(function(resolve, reject) {
-				taskRunner = function() {
-					try {
-						var result = task();
-						result.then(resolve).catch(reject);
-					} catch (e) {
-						reject(e);
-					}
-				};
+			var queuedResolve;
+			var promise = new Promise(function(resolve) {
+				queuedResolve = resolve;
 			});
-			this.queueEnd.then(taskRunner, taskRunner);
+
+			this.queueEnd.then(runTask, runTask);
 			this.queueEnd = promise;
 			return promise;
+
+			function runTask() {
+				queuedResolve(new Promise(function(resolve) {
+					resolve(task());
+				}));
+			}
 		}
 	};
 })();

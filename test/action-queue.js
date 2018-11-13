@@ -103,5 +103,15 @@ suite('action-queue', function() {
 			});
 
 		});
+
+		test('accepts non-promise synchronous tasks', function() {
+			return window.D2L.Siren.ActionQueue
+				.enqueue(function() {
+					return 'cats';
+				})
+				.then(function(result) {
+					expect(result).to.equal('cats');
+				});
+		});
 	});
 });
