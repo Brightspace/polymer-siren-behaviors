@@ -311,13 +311,13 @@
 					// assuemedly the component called removeListener directly with its latest
 					// values instead of the "removeListener" function returned by addListener.
 					// component is probably unregistering, so remove the listener entirely
-					registrations.remove(listener);
+					registrations.delete(listener);
 					return;
 				}
 
 				// no registrations left for this listener, remove it from the list
 				if (tokenValues.size === 0) {
-					registrations.remove(listener);
+					registrations.delete(listener);
 					return;
 				}
 			}.bind(this));
