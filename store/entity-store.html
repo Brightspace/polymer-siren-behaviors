@@ -325,14 +325,14 @@
 
 		_notify: function(entityId, cacheKey, entity) {
 			const registrations = this._initContainer(this._listeners, entityId, cacheKey, new Map());
-			Array.from(registrations.keys()).forEach(function(listener) {
+			registrations.forEach(function(_, listener) {
 				listener(entity);
 			});
 		},
 
 		_notifyError: function(entityId, cacheKey, error) {
 			const registrations = this._initContainer(this._listeners, entityId, cacheKey, new Map());
-			Array.from(registrations.keys()).forEach(function(listener) {
+			registrations.forEach(function(_, listener) {
 				listener(null, error);
 			});
 		},
