@@ -123,6 +123,9 @@ window.D2L.Siren.EntityStore = {
 	// updating the UI more consistently when dependent entities change as a result of Siren
 	// actions.
 	fetch: function(entityId, token, bypassCache) {
+		if(!entityId) {
+			return Promise.reject(new Error('Cannot fetch undefined entityId'));
+		}
 		return this._getToken(token).then(function(resolved) {
 			const cacheKey = resolved.cacheKey;
 			const tokenValue = resolved.tokenValue;
@@ -197,6 +200,9 @@ window.D2L.Siren.EntityStore = {
 	},
 
 	update: function(entityId, token, entity) {
+		if(!entityId) {
+			return Promise.reject(new Error('Cannot fetch undefined entityId'));
+		}
 		return this._getToken(token).then(function(resolved) {
 			const cacheKey = resolved.cacheKey;
 			const lowerCaseEntityId = entityId.toLowerCase();
