@@ -151,19 +151,19 @@ suite('entity-store', function() {
 			window.D2L.Siren.EntityStore.fetch('static-data/rubrics/organizations/text-only/199/groups/176/criteria.json', '');
 		});
 
-		test('fetch rejects undefined entityid', async () => {
+		test('fetch rejects undefined entityid', async() => {
 			try {
 				await window.D2L.Siren.EntityStore.fetch();
-				throw new Error('promise was not rejected')
+				throw new Error('promise was not rejected');
 			} catch (e) {
 				expect(e.message).to.be.equal('Cannot fetch undefined entityId');
 			}
 		});
 
-		test('update rejects undefined entityid', async () => {
+		test('update rejects undefined entityid', async() => {
 			try {
 				await window.D2L.Siren.EntityStore.update();
-				throw new Error('promise was not rejected')
+				throw new Error('promise was not rejected');
 			} catch (e) {
 				expect(e.message).to.be.equal('Cannot fetch undefined entityId');
 			}
