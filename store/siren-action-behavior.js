@@ -131,18 +131,22 @@ D2L.PolymerBehaviors.Siren.SirenActionBehaviorImpl = {
 
 	performSirenAction: function(action, fields, immediate) {
 		var self = this;
-		return !immediate ? window.D2L.Siren.ActionQueue.enqueue(function() {
-			return self._performSirenAction(action, fields);
-		}) : self._performSirenAction(action, fields);
+		return window.D2L.Siren.EntityStore.getToken(this.token)
+			.then(function(resolved) {
+				var tokenValue = resolved.tokenValue;
+				return !immediate ? window.D2L.Siren.ActionQueue.enqueue(function() {
+					return self._performSirenAction(action, fields, tokenValue);
+				}) : self._performSirenAction(action, fields, tokenValue);
+			}.bind(this));
 	},
 
-	_performSirenAction: function(action, fields) {
+	_performSirenAction: function(action, fields, tokenValue) {
 		if (!action) {
 			return Promise.reject(new Error('No action given'));
 		}
 
 		var headers = new Headers();
-		this.token && headers.append('Authorization', 'Bearer ' + this.token);
+		tokenValue && headers.append('Authorization', 'Bearer ' + tokenValue);
 
 		var url = this.getEntityUrl(action, fields);
 		var body;
@@ -165,7 +169,7 @@ D2L.PolymerBehaviors.Siren.SirenActionBehaviorImpl = {
 			body = this._createFormData(fields);
 		}
 
-		var token = this.token;
+		var token = tokenValue;
 
 		return this._fetch(url.href, {
 			method: action.method,

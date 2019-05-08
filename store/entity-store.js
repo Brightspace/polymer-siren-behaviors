@@ -40,7 +40,7 @@ window.D2L.Siren.EntityStore = {
 	},
 
 	addListener: function(entityId, token, listener) {
-		return this._getToken(token).then(function(resolved) {
+		return this.getToken(token).then(function(resolved) {
 			const cacheKey = resolved.cacheKey;
 			const tokenValue = resolved.tokenValue;
 
@@ -68,7 +68,7 @@ window.D2L.Siren.EntityStore = {
 		this._invalidationListeners.delete(listener);
 	},
 
-	_getToken: function(token) {
+	getToken: function(token) {
 		const tokenPromise = (typeof (token) === 'function')
 			? token()
 			: Promise.resolve(token);
@@ -126,7 +126,8 @@ window.D2L.Siren.EntityStore = {
 		if (!entityId) {
 			return Promise.reject(new Error('Cannot fetch undefined entityId'));
 		}
-		return this._getToken(token).then(function(resolved) {
+		return this.getToken(token).then(function(resolved) {
+
 			const cacheKey = resolved.cacheKey;
 			const tokenValue = resolved.tokenValue;
 
@@ -187,7 +188,7 @@ window.D2L.Siren.EntityStore = {
 	},
 
 	get: function(entityId, token) {
-		return this._getToken(token).then(function(resolved) {
+		return this.getToken(token).then(function(resolved) {
 			const cacheKey = resolved.cacheKey;
 
 			const entity = this._initContainer(this._store, entityId, cacheKey);
@@ -203,7 +204,7 @@ window.D2L.Siren.EntityStore = {
 		if (!entityId) {
 			return Promise.reject(new Error('Cannot fetch undefined entityId'));
 		}
-		return this._getToken(token).then(function(resolved) {
+		return this.getToken(token).then(function(resolved) {
 			const cacheKey = resolved.cacheKey;
 			const lowerCaseEntityId = entityId.toLowerCase();
 
@@ -257,7 +258,7 @@ window.D2L.Siren.EntityStore = {
 	},
 
 	setError: function(entityId, token, error) {
-		return this._getToken(token).then(function(resolved) {
+		return this.getToken(token).then(function(resolved) {
 			const cacheKey = resolved.cacheKey;
 
 			const lowerCaseEntityId = entityId.toLowerCase();
@@ -275,7 +276,7 @@ window.D2L.Siren.EntityStore = {
 	},
 
 	removeListener: function(entityId, token, listener) {
-		return this._getToken(token).then(function(resolved) {
+		return this.getToken(token).then(function(resolved) {
 			const cacheKey = resolved.cacheKey;
 			const tokenValue = resolved.tokenValue;
 

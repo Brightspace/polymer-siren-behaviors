@@ -142,6 +142,7 @@ suite('siren-action-behavior', function() {
 			fetchStub.withArgs('http://api.x.io/orders/42/items').returns(
 				new Promise(function(resolve) {
 					setTimeout(function() {
+						expect(fetchStub.callCount).to.equal(1);
 						resolve(res1);
 					});
 				})
@@ -151,9 +152,7 @@ suite('siren-action-behavior', function() {
 					resolve(res2);
 				})
 			);
-			var firstCall = element.performSirenAction(testAction).then(function() {
-				expect(fetchStub.callCount).to.equal(1);
-			});
+			var firstCall = element.performSirenAction(testAction);
 			element.performSirenAction(testAction2);
 			return firstCall;
 		});
