@@ -150,7 +150,7 @@ D2L.PolymerBehaviors.Siren.SirenActionBehaviorImpl = {
 		tokenValue && headers.append('Authorization', 'Bearer ' + tokenValue);
 
 		var url = this.getEntityUrl(action, fields);
-		if (!window.D2L.Siren.WhitelistBehavior.isWhitelisted(url)) {
+		if (!window.D2L.Siren.WhitelistBehavior.isWhitelisted(url.href)) {
 			return Promise.reject(new Error('Invalid request url; must be a valid whitelisted domain.'));
 		}
 		var body;
