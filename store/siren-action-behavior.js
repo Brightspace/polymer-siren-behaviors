@@ -91,12 +91,12 @@ D2L.PolymerBehaviors.Siren.SirenActionBehaviorImpl = {
 		var self = this;
 
 		if (sendSaveEvent) {
-			self.fire('d2l-siren-entity-save-start');
+			self.dispatchEvent(new CustomEvent('d2l-siren-entity-save-start', {bubbles: true, composed: true}));
 		}
 		return window.d2lfetch.fetch(href, opts)
 			.then(function(resp) {
 				if (sendSaveEvent && resp.ok) {
-					self.fire('d2l-siren-entity-save-end');
+					self.dispatchEvent(new CustomEvent('d2l-siren-entity-save-end', {bubbles: true, composed: true}));
 				}
 				return resp;
 			})
@@ -128,7 +128,7 @@ D2L.PolymerBehaviors.Siren.SirenActionBehaviorImpl = {
 				});
 			})
 			.catch(function(reason) {
-				self.fire('d2l-siren-entity-save-error', { error: reason });
+				self.dispatchEvent(new CustomEvent('d2l-siren-entity-save-error', {detail:{ error: reason }, bubbles:true, composed:true}));
 				throw reason;
 			});
 	},
