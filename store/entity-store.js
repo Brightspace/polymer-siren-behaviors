@@ -236,7 +236,7 @@ window.D2L.Siren.EntityStore = {
 		const expandEntities = [];
 		const entities = [];
 		expandEntities.push(entity);
-		entityIndex.add(entityId);
+		entityIndex.add(entityId.toLowerCase());
 		entities.push({
 			key: entityId,
 			value: entity
