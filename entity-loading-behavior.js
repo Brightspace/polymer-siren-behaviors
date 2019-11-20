@@ -41,7 +41,7 @@ D2L.PolymerBehaviors.Siren.EntityLoadingBehaviorImpl = {
 		}
 		this._oldHref = href;
 		this._oldToken = token;
-		if (typeof href === 'string' && typeof token === 'string') {
+		if (typeof href === 'string' && (typeof token === 'string' || typeof token === 'function')) {
 			window.D2L.Siren.EntityStore.addListener(href, token, this._boundUpdateLoadingState);
 			window.D2L.Siren.EntityStore.fetch(href, token)
 				.then(function(entity) {
