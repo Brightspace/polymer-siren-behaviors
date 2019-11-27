@@ -15,7 +15,7 @@ window.D2L.Siren.ActionQueue = {
 		_numQueuedActions++;
 		this.queueEnd.then(runTask, runTask);
 		this.queueEnd = promise;
-		promise.finally( function() {
+		promise.finally(function() {
 			_numQueuedActions--;
 		});
 		return promise;
