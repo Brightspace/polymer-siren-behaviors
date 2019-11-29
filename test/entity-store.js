@@ -171,6 +171,23 @@ suite('entity-store', function() {
 			}
 		});
 
+		test('remove rejects undefined entityid', async() => {
+			try {
+				await window.D2L.Siren.EntityStore.remove();
+				throw new Error('promise was not rejected');
+			} catch (e) {
+				expect(e.message).to.be.equal('Cannot fetch undefined entityId');
+			}
+		});
+
+		test('remove removes item from Entity Store', async() => {
+			const entityId = 'static-data/rubrics/organizations/text-only/199/groups/176/criteria/623.json';
+			await window.D2L.Siren.EntityStore.fetch(entityId, '');
+			expect(await window.D2L.Siren.EntityStore.get(entityId, '')).not.to.be.null;
+			await window.D2L.Siren.EntityStore.remove(entityId, '');
+			expect(await window.D2L.Siren.EntityStore.get(entityId, '')).to.be.null;
+		});
+
 		suite('link header parse', function() {
 
 			test('can parse single link header', function() {
