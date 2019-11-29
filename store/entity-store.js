@@ -270,7 +270,6 @@ window.D2L.Siren.EntityStore = {
 			const cacheKey = resolved.cacheKey;
 			const lowerCaseEntityId = entityId.toLowerCase();
 			this._initContainer(this._store, entityId, cacheKey);
-			this._store.get(cacheKey).delete(lowerCaseEntityId);
 			this._notify(entityId, cacheKey, null);
 		}.bind(this));
 	},
