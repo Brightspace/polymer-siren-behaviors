@@ -262,6 +262,19 @@ window.D2L.Siren.EntityStore = {
 		return entities;
 	},
 
+	remove: function(entityId, token) {
+		if (!entityId) {
+			return Promise.reject(new Error('Cannot fetch undefined entityId'));
+		}
+		return this.getToken(token).then(function(resolved) {
+			const cacheKey = resolved.cacheKey;
+			const lowerCaseEntityId = entityId.toLowerCase();
+			this._initContainer(this._store, entityId, cacheKey);
+			this._store.get(cacheKey).delete(lowerCaseEntityId);
+			this._notify(entityId, cacheKey, null);
+		}.bind(this));
+	},
+
 	setError: function(entityId, token, error) {
 		return this.getToken(token).then(function(resolved) {
 			const cacheKey = resolved.cacheKey;
