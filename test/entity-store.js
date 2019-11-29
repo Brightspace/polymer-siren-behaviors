@@ -199,7 +199,9 @@ suite('entity-store', function() {
 		});
 
 		suite('fetches cache primers', function() {
+
 			var origFetch;
+
 			setup(function() {
 				origFetch = window.d2lfetch.fetch;
 			});
