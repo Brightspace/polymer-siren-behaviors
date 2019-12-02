@@ -1,4 +1,4 @@
-/* global suite, test, expect, setup, teardown, sinon */
+/* global suite, test, expect, setup, teardown, sinon, WCT */
 
 'use strict';
 
@@ -13,6 +13,7 @@ suite('action-queue', function() {
 	var sandbox;
 
 	setup(function() {
+		WCT._config.trackConsoleError = false;
 		sandbox = sinon.sandbox.create();
 	});
 
