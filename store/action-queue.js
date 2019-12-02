@@ -1,6 +1,8 @@
 window.D2L = window.D2L || {};
 window.D2L.Siren = window.D2L.Siren || {};
 
+var _numQueuedActions = 0;
+
 window.D2L.Siren.ActionQueue = {
 	queueEnd: Promise.resolve(),
 
@@ -10,8 +12,12 @@ window.D2L.Siren.ActionQueue = {
 			queuedResolve = resolve;
 		});
 
+		_numQueuedActions++;
 		this.queueEnd.then(runTask, runTask);
 		this.queueEnd = promise;
+		promise.finally(function() {
+			_numQueuedActions--;
+		});
 		return promise;
 
 		function runTask() {
@@ -19,5 +25,10 @@ window.D2L.Siren.ActionQueue = {
 				resolve(task());
 			}));
 		}
+	},
+
+	isPending: function() {
+		return _numQueuedActions > 0;
 	}
+
 };
