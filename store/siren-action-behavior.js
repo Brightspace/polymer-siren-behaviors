@@ -105,14 +105,14 @@ D2L.PolymerBehaviors.Siren.SirenActionBehaviorImpl = {
 					var errMsg = resp.statusText + ' response executing ' + opts.method + ' on ' + href + '.';
 					const clone = resp.clone();
 					return resp.json()
-					.catch(function(error) {
-						return clone.text();
-					})
-					.then(function(data) {
-						throw { json: data, message: errMsg };
-					}, function(data) {
-						throw { string: data, message: errMsg };
-					});
+						.catch(function() {
+							return clone.text();
+						})
+						.then(function(data) {
+							throw { json: data, message: errMsg };
+						}, function(data) {
+							throw { string: data, message: errMsg };
+						});
 				}
 				var linkHeader = resp.headers ? resp.headers.get('Link') : null;
 				var links;
