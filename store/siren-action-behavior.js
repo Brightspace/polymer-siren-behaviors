@@ -103,7 +103,15 @@ D2L.PolymerBehaviors.Siren.SirenActionBehaviorImpl = {
 			.then(function(resp) {
 				if (!resp.ok) {
 					var errMsg = resp.statusText + ' response executing ' + opts.method + ' on ' + href + '.';
-					return resp.json().then(function(data) {
+					return resp.text()
+					.then(function(text) {
+						try {
+							return JSON.parse(text);
+						} catch (e) {
+							return text;
+						}
+					})
+					.then(function(data) {
 						throw { json: data, message: errMsg };
 					}, function(data) {
 						throw { string: data, message: errMsg };
