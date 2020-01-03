@@ -143,7 +143,7 @@ window.D2L.Siren.EntityStore = {
 
 				const headers = new Headers();
 				tokenValue && headers.set('Authorization', 'Bearer ' + tokenValue);
-
+				headers.set('Accept', 'application/vnd.siren+json');
 				if (bypassCache) {
 					headers.set('pragma', 'no-cache');
 					headers.set('cache-control', 'no-cache');
