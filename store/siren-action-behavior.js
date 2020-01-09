@@ -113,8 +113,6 @@ D2L.PolymerBehaviors.Siren.SirenActionBehaviorImpl = {
 						})
 						.then(function(data) {
 							throw { json: data, message: errMsg };
-						}, function(data) {
-							throw { string: data, message: errMsg };
 						});
 				}
 				var linkHeader = resp.headers ? resp.headers.get('Link') : null;
