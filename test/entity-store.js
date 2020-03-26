@@ -19,19 +19,42 @@ suite('entity-store', function() {
 
 	suite('smoke test', function() {
 
-		test('can fetch leaf entity using listener', function(done) {
-			window.D2L.Siren.EntityStore.addListener(
-				'static-data/rubrics/organizations/text-only/199/groups/176/criteria/623/0.json',
-				'',
-				function(entity) {
-					var description = entity && entity.getSubEntityByClass('description').properties.html;
-					expect(description).to.equal('Proper use of grammar');
-					if (!done.done) {
-						done();
-						done.done = true;
-					}
+		suite('can fetch leaf entity using listener', () => {
+			async function _test(sirenLinkOrHrefListened, sirenLinkOrHrefFetched) {
+				let resolve;
+				const wait = new Promise((_resolve) => resolve = _resolve);
+
+				await window.D2L.Siren.EntityStore.addListener(sirenLinkOrHrefListened, '', entity => {
+					resolve(Promise.resolve().then(() => {
+						const description = entity && entity.getSubEntityByClass('description').properties.html;
+						expect(description).to.equal('Proper use of grammar');
+					}));
 				});
-			window.D2L.Siren.EntityStore.fetch('static-data/rubrics/organizations/text-only/199/groups/176/criteria/623/0.json', '');
+
+				await window.D2L.Siren.EntityStore.fetch(sirenLinkOrHrefFetched, '');
+
+				await wait;
+			}
+
+			test('with string hrefs', () => _test(
+				'static-data/rubrics/organizations/text-only/199/groups/176/criteria/623/0.json',
+				'static-data/rubrics/organizations/text-only/199/groups/176/criteria/623/0.json',
+			));
+
+			test('with siren links', () => _test(
+				{ href: 'static-data/rubrics/organizations/text-only/199/groups/176/criteria/623/0.json' },
+				{ href: 'static-data/rubrics/organizations/text-only/199/groups/176/criteria/623/0.json' },
+			));
+
+			test('with string href and siren link', () => _test(
+				'static-data/rubrics/organizations/text-only/199/groups/176/criteria/623/0.json',
+				{ href: 'static-data/rubrics/organizations/text-only/199/groups/176/criteria/623/0.json' },
+			));
+
+			test('with siren link and string href', () => _test(
+				{ href: 'static-data/rubrics/organizations/text-only/199/groups/176/criteria/623/0.json' },
+				'static-data/rubrics/organizations/text-only/199/groups/176/criteria/623/0.json',
+			));
 		});
 
 		test('can fetch leaf entity using fetched href when self link does not match fetched href', function(done) {
@@ -76,27 +99,48 @@ suite('entity-store', function() {
 			});
 		});
 
-		test('get entity returns null if not in store', function() {
-			return window.D2L.Siren.EntityStore
-				.get('static-data/rubrics/organizations/text-only/199/groups/176/criteria/623/UNKNOWN1.json', '')
-				.then(function(entity) {
-					expect(entity).to.be.null;
-				});
+		suite('get entity returns null if not in store', () => {
+			async function _test(sirenLinkOrHref) {
+				const entity = await window.D2L.Siren.EntityStore.get(sirenLinkOrHref, '');
+
+				expect(entity).to.be.null;
+			}
+
+			test('for string href', () => _test('static-data/rubrics/organizations/text-only/199/groups/176/criteria/623/UNKNOWN1.json'));
+			test('for siren link', () => _test({ href: 'static-data/rubrics/organizations/text-only/199/groups/176/criteria/623/UNKNOWN1.json' }));
 		});
 
-		test('get entity returns entity sync', function() {
-			return window.D2L.Siren.EntityStore
-				.fetch('static-data/rubrics/organizations/text-only/199/groups/176/criteria/623/0.json', '')
-				.then(function() {
-					return window.D2L.Siren.EntityStore
-						.get('static-data/rubrics/organizations/text-only/199/groups/176/criteria/623/0.json', '');
-				})
-				.then(function(entity) {
-					expect(entity).to.exist;
+		suite('get entity returns entity if in store', () => {
+			async function _test(sirenLinkOrHrefA, sirenLinkOrHrefB) {
+				await window.D2L.Siren.EntityStore.fetch(sirenLinkOrHrefA, '');
 
-					var description = entity.getSubEntityByClass('description').properties.html;
-					expect(description).to.equal('Proper use of grammar');
-				});
+				const entity = await window.D2L.Siren.EntityStore.get(sirenLinkOrHrefB, '');
+
+				expect(entity).to.exist;
+
+				var description = entity.getSubEntityByClass('description').properties.html;
+				expect(description).to.equal('Proper use of grammar');
+			}
+
+			test('for string hrefs', () => _test(
+				'static-data/rubrics/organizations/text-only/199/groups/176/criteria/623/0.json',
+				'static-data/rubrics/organizations/text-only/199/groups/176/criteria/623/0.json',
+			));
+
+			test('for siren links', () => _test(
+				{ href: 'static-data/rubrics/organizations/text-only/199/groups/176/criteria/623/0.json' },
+				{ href: 'static-data/rubrics/organizations/text-only/199/groups/176/criteria/623/0.json' },
+			));
+
+			test('for string href and siren link', () => _test(
+				'static-data/rubrics/organizations/text-only/199/groups/176/criteria/623/0.json',
+				{ href: 'static-data/rubrics/organizations/text-only/199/groups/176/criteria/623/0.json' },
+			));
+
+			test('for siren link and string href', () => _test(
+				{ href: 'static-data/rubrics/organizations/text-only/199/groups/176/criteria/623/0.json' },
+				'static-data/rubrics/organizations/text-only/199/groups/176/criteria/623/0.json',
+			));
 		});
 
 		test('handles entity error using listener', function(done) {
@@ -162,9 +206,27 @@ suite('entity-store', function() {
 			}
 		});
 
+		test('fetch rejects undefined href on link', async() => {
+			try {
+				await window.D2L.Siren.EntityStore.fetch({ rel: ['alternate'] });
+				throw new Error('promise was not rejected');
+			} catch (e) {
+				expect(e.message).to.be.equal('Cannot fetch undefined entityId');
+			}
+		});
+
 		test('update rejects undefined entityid', async() => {
 			try {
 				await window.D2L.Siren.EntityStore.update();
+				throw new Error('promise was not rejected');
+			} catch (e) {
+				expect(e.message).to.be.equal('Cannot fetch undefined entityId');
+			}
+		});
+
+		test('update rejects undefined href on link', async() => {
+			try {
+				await window.D2L.Siren.EntityStore.update({ rel: ['alternate'] });
 				throw new Error('promise was not rejected');
 			} catch (e) {
 				expect(e.message).to.be.equal('Cannot fetch undefined entityId');
@@ -180,12 +242,25 @@ suite('entity-store', function() {
 			}
 		});
 
-		test('remove removes item from Entity Store', async() => {
-			const entityId = 'static-data/rubrics/organizations/text-only/199/groups/176/criteria/623.json';
-			await window.D2L.Siren.EntityStore.fetch(entityId, '');
-			expect(await window.D2L.Siren.EntityStore.get(entityId, '')).not.to.be.null;
-			await window.D2L.Siren.EntityStore.remove(entityId, '');
-			expect(await window.D2L.Siren.EntityStore.get(entityId, '')).to.be.null;
+		test('remove rejects undefined href on link', async() => {
+			try {
+				await window.D2L.Siren.EntityStore.remove({ rel: ['alternate'] });
+				throw new Error('promise was not rejected');
+			} catch (e) {
+				expect(e.message).to.be.equal('Cannot fetch undefined entityId');
+			}
+		});
+
+		suite('remove removes item from Entity Store', () => {
+			async function _test(sirenLinkOrHref) {
+				await window.D2L.Siren.EntityStore.fetch(sirenLinkOrHref, '');
+				expect(await window.D2L.Siren.EntityStore.get(sirenLinkOrHref, '')).not.to.be.null;
+				await window.D2L.Siren.EntityStore.remove(sirenLinkOrHref, '');
+				expect(await window.D2L.Siren.EntityStore.get(sirenLinkOrHref, '')).to.be.null;
+			}
+
+			test('with string href', () => _test('static-data/rubrics/organizations/text-only/199/groups/176/criteria/623.json'));
+			test('with siren link', () => _test({ href: 'static-data/rubrics/organizations/text-only/199/groups/176/criteria/623.json' }));
 		});
 
 		suite('link header parse', function() {
