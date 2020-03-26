@@ -29,37 +29,75 @@ window.D2L.Siren.EntityStore = {
 
 	_invalidationListeners: new Set(),
 
-	_initContainer: function(map, entityId, cacheKey, init) {
+	_initContainer: function(map, entityOrLinkOrHref, cacheKey, init) {
 		const lowerCaseCacheKey = cacheKey.toLowerCase();
-		const lowerCaseEntityId = entityId.toLowerCase();
+		const normalizedHref = this._getHref(entityOrLinkOrHref).toLowerCase();
 
 		if (!map.has(lowerCaseCacheKey)) {
 			map.set(lowerCaseCacheKey, new Map());
 		}
 		const entityMap = map.get(lowerCaseCacheKey);
-		if (init && !entityMap.has(lowerCaseEntityId)) {
-			entityMap.set(lowerCaseEntityId, init);
+		if (init && !entityMap.has(normalizedHref)) {
+			entityMap.set(normalizedHref, init);
 		}
-		return entityMap.get(lowerCaseEntityId);
+		return entityMap.get(normalizedHref);
 	},
 
-	addListener: function(entityId, token, listener) {
-		return this.getToken(token).then(function(resolved) {
+	_getHref(entityOrLinkOrHref) {
+		if (!entityOrLinkOrHref) {
+			return;
+		}
+
+		if (typeof entityOrLinkOrHref === 'string') {
+			return entityOrLinkOrHref;
+		}
+
+		if (entityOrLinkOrHref.href) {
+			return entityOrLinkOrHref.href;
+		}
+
+		if (!entityOrLinkOrHref.hasLinkByRel || !entityOrLinkOrHref.hasLinkByRel('self')) {
+			return;
+		}
+
+		return entityOrLinkOrHref.getLinkByRel('self').href;
+	},
+
+	_authful(entityOrLinkOrHref) {
+		if (!entityOrLinkOrHref) {
+			return false;
+		}
+
+		if (typeof entityOrLinkOrHref === 'string') {
+			return true;
+		}
+
+		const rel = entityOrLinkOrHref.rel;
+		if (!Array.isArray(rel)) {
+			return false;
+		}
+
+		const nofollow = rel.includes('nofollow');
+		return !nofollow;
+	},
+
+	addListener: function(entityOrLinkOrHref, token, listener) {
+		return this.getToken(token, entityOrLinkOrHref).then(function(resolved) {
 			const cacheKey = resolved.cacheKey;
 			const tokenValue = resolved.tokenValue;
 
-			if (!entityId || (typeof cacheKey !== 'string' && typeof listener !== 'function')) {
+			if (!entityOrLinkOrHref || (typeof cacheKey !== 'string' && typeof listener !== 'function')) {
 				return;
 			}
 
-			const registrations = this._initContainer(this._listeners, entityId, cacheKey, new Map());
+			const registrations = this._initContainer(this._listeners, entityOrLinkOrHref, cacheKey, new Map());
 			if (!registrations.has(listener)) {
 				registrations.set(listener, new Set());
 			}
 			registrations.get(listener).add(tokenValue);
 
 			return (function() {
-				this._removeListenerWithResolvedToken(entityId, resolved, listener);
+				this._removeListenerWithResolvedToken(entityOrLinkOrHref, resolved, listener);
 			}).bind(this);
 		}.bind(this));
 	},
@@ -72,7 +110,14 @@ window.D2L.Siren.EntityStore = {
 		this._invalidationListeners.delete(listener);
 	},
 
-	getToken: function(token) {
+	getToken: function(token, entityOrLinkOrHref) {
+		if (!this._authful(entityOrLinkOrHref)) {
+			return Promise.resolve({
+				cacheKey: '',
+				tokenValue: ''
+			});
+		}
+
 		const tokenPromise = (typeof (token) === 'function')
 			? token()
 			: Promise.resolve(token);
@@ -126,30 +171,38 @@ window.D2L.Siren.EntityStore = {
 	// It is also now returning a promise so that the siren-action-behavior can co-ordinate
 	// updating the UI more consistently when dependent entities change as a result of Siren
 	// actions.
-	fetch: function(entityId, token, bypassCache) {
-		if (!entityId) {
+	fetch: function(entityOrLinkOrHref, token, bypassCache) {
+		if (!entityOrLinkOrHref) {
 			return Promise.reject(new Error('Cannot fetch undefined entityId'));
 		}
 
-		return this.getToken(token).then(function(resolved) {
+		return this.getToken(token, entityOrLinkOrHref).then(function(resolved) {
 
 			const cacheKey = resolved.cacheKey;
 			const tokenValue = resolved.tokenValue;
 
-			const lowerCaseEntityId = entityId.toLowerCase();
+			const href = this._getHref(entityOrLinkOrHref);
+			const normalizedHref = href.toLowerCase();
 
-			const entity = this._initContainer(this._store, entityId, cacheKey);
+			const entity = this._initContainer(this._store, normalizedHref, cacheKey);
 			if (!entity || bypassCache) {
 
+				const authful = this._authful(entityOrLinkOrHref);
+
 				const headers = new Headers();
-				tokenValue && headers.set('Authorization', 'Bearer ' + tokenValue);
+
+				authful && tokenValue && headers.set('Authorization', 'Bearer ' + tokenValue);
 
 				if (bypassCache) {
 					headers.set('pragma', 'no-cache');
 					headers.set('cache-control', 'no-cache');
 				}
 
-				const request = window.d2lfetch.fetch(entityId, {
+				const fetch = authful
+					? window.d2lfetch
+					: window.d2lfetch.removeTemp('auth');
+
+				const request = fetch.fetch(href, {
 					headers: headers
 				})
 					.then(checkResponse)
@@ -157,24 +210,24 @@ window.D2L.Siren.EntityStore = {
 					.then(getResponseJson)
 					.then(SirenParse)
 					.then(function(entity) {
-						return this.update(entityId, resolved, entity);
+						return this.update(href, resolved, entity);
 					}.bind(this))
 					.then(function(entity) {
 						if (bypassCache) {
 							this._invalidationListeners.forEach(function(listener) {
-								listener(entityId, cacheKey, entity);
+								listener(href, cacheKey, entity);
 							});
 						}
-						return this._store.get(cacheKey).get(lowerCaseEntityId);
+						return this._store.get(cacheKey).get(normalizedHref);
 					}.bind(this))
 					.catch(function(err) {
 						return this
-							.setError(entityId, resolved, err).then(function() {
-								return this._store.get(cacheKey).get(lowerCaseEntityId);
+							.setError(href, resolved, err).then(function() {
+								return this._store.get(cacheKey).get(normalizedHref);
 							}.bind(this));
 					}.bind(this));
 
-				this._store.get(cacheKey).set(lowerCaseEntityId, {
+				this._store.get(cacheKey).set(normalizedHref, {
 					status: 'fetching',
 					entity: null,
 					request: request
@@ -186,17 +239,17 @@ window.D2L.Siren.EntityStore = {
 			if (entity.request) {
 				return entity.request;
 			} else {
-				this._notify(lowerCaseEntityId, cacheKey, entity.entity);
+				this._notify(normalizedHref, cacheKey, entity.entity);
 				return entity;
 			}
 		}.bind(this));
 	},
 
-	get: function(entityId, token) {
-		return this.getToken(token).then(function(resolved) {
+	get: function(entityOrLinkOrHref, token) {
+		return this.getToken(token, entityOrLinkOrHref).then(function(resolved) {
 			const cacheKey = resolved.cacheKey;
 
-			const entity = this._initContainer(this._store, entityId, cacheKey);
+			const entity = this._initContainer(this._store, entityOrLinkOrHref, cacheKey);
 			if (entity) {
 				return entity.entity;
 			} else {
@@ -205,17 +258,17 @@ window.D2L.Siren.EntityStore = {
 		}.bind(this));
 	},
 
-	update: function(entityId, token, entity) {
-		if (!entityId) {
+	update: function(entityOrLinkOrHref, token, entity) {
+		if (!entityOrLinkOrHref) {
 			return Promise.reject(new Error('Cannot fetch undefined entityId'));
 		}
-		return this.getToken(token).then(function(resolved) {
+		return this.getToken(token, entityOrLinkOrHref).then(function(resolved) {
 			const cacheKey = resolved.cacheKey;
-			const lowerCaseEntityId = entityId.toLowerCase();
+			const normalizedHref = this._getHref(entityOrLinkOrHref).toLowerCase();
 
-			this._initContainer(this._store, lowerCaseEntityId, cacheKey);
+			this._initContainer(this._store, normalizedHref, cacheKey);
 
-			const entities = this.expand(entityId, entity);
+			const entities = this.expand(normalizedHref, entity);
 			entities.forEach(function(entity) {
 				this._store.get(cacheKey).set(entity.key.toLowerCase(), {
 					status: '',
@@ -231,14 +284,16 @@ window.D2L.Siren.EntityStore = {
 		}.bind(this));
 	},
 
-	expand: function(entityId, entity) {
+	expand: function(entityOrLinkOrHref, entity) {
+		const href = this._getHref(entityOrLinkOrHref);
+
 		const entityIndex = new Set();
 		const expandEntities = [];
 		const entities = [];
 		expandEntities.push(entity);
-		entityIndex.add(entityId.toLowerCase());
+		entityIndex.add(href.toLowerCase());
 		entities.push({
-			key: entityId,
+			key: href,
 			value: entity
 		});
 
@@ -262,40 +317,40 @@ window.D2L.Siren.EntityStore = {
 		return entities;
 	},
 
-	remove: function(entityId, token) {
-		if (!entityId) {
+	remove: function(entityOrLinkOrHref, token) {
+		if (!entityOrLinkOrHref) {
 			return Promise.reject(new Error('Cannot fetch undefined entityId'));
 		}
-		return this.getToken(token).then(function(resolved) {
+		return this.getToken(token, entityOrLinkOrHref).then(function(resolved) {
 			const cacheKey = resolved.cacheKey;
-			const lowerCaseEntityId = entityId.toLowerCase();
-			this._initContainer(this._store, entityId, cacheKey);
-			this._store.get(cacheKey).delete(lowerCaseEntityId);
-			this._notify(entityId, cacheKey, null);
+			const normalizedHref = this._getHref(entityOrLinkOrHref).toLowerCase();
+			this._initContainer(this._store, normalizedHref, cacheKey);
+			this._store.get(cacheKey).delete(normalizedHref);
+			this._notify(normalizedHref, cacheKey, null);
 		}.bind(this));
 	},
 
-	setError: function(entityId, token, error) {
-		return this.getToken(token).then(function(resolved) {
+	setError: function(entityOrLinkOrHref, token, error) {
+		return this.getToken(token, entityOrLinkOrHref).then(function(resolved) {
 			const cacheKey = resolved.cacheKey;
 
-			const lowerCaseEntityId = entityId.toLowerCase();
+			const normalizedHref = this._getHref(entityOrLinkOrHref).toLowerCase();
 
-			this._initContainer(this._store, entityId, cacheKey);
-			this._store.get(cacheKey).set(lowerCaseEntityId, {
+			this._initContainer(this._store, normalizedHref, cacheKey);
+			this._store.get(cacheKey).set(normalizedHref, {
 				status: 'error',
 				entity: null,
 				error: error,
 				request: null
 			});
-			this._notifyError(entityId, cacheKey, error);
+			this._notifyError(normalizedHref, cacheKey, error);
 			return error;
 		}.bind(this));
 	},
 
-	removeListener: function(entityId, token, listener) {
-		return this.getToken(token).then(function(resolver) {
-			return this._removeListenerWithResolvedToken(entityId, resolver, listener);
+	removeListener: function(entityOrLinkOrHref, token, listener) {
+		return this.getToken(token, entityOrLinkOrHref).then(function(resolver) {
+			return this._removeListenerWithResolvedToken(entityOrLinkOrHref, resolver, listener);
 		}.bind(this));
 	},
 	_handleCachePriming: function(token, response) {
@@ -326,28 +381,28 @@ window.D2L.Siren.EntityStore = {
 			}, this))
 			.then(returnResponse, returnResponse);
 	},
-	_notify: function(entityId, cacheKey, entity) {
-		const registrations = this._initContainer(this._listeners, entityId, cacheKey, new Map());
+	_notify: function(entityOrLinkOrHref, cacheKey, entity) {
+		const registrations = this._initContainer(this._listeners, entityOrLinkOrHref, cacheKey, new Map());
 		registrations.forEach(function(_, listener) {
 			listener(entity);
 		});
 	},
 
-	_notifyError: function(entityId, cacheKey, error) {
-		const registrations = this._initContainer(this._listeners, entityId, cacheKey, new Map());
+	_notifyError: function(entityOrLinkOrHref, cacheKey, error) {
+		const registrations = this._initContainer(this._listeners, entityOrLinkOrHref, cacheKey, new Map());
 		registrations.forEach(function(_, listener) {
 			listener(null, error);
 		});
 	},
-	_removeListenerWithResolvedToken: function(entityId, resolved, listener) {
+	_removeListenerWithResolvedToken: function(entityOrLinkOrHref, resolved, listener) {
 		const cacheKey = resolved.cacheKey;
 		const tokenValue = resolved.tokenValue;
 
-		if (!entityId || typeof cacheKey !== 'string' || typeof listener !== 'function' || !this._listeners) {
+		if (!entityOrLinkOrHref || typeof cacheKey !== 'string' || typeof listener !== 'function' || !this._listeners) {
 			return;
 		}
 
-		const registrations = this._initContainer(this._listeners, entityId, cacheKey, new Map());
+		const registrations = this._initContainer(this._listeners, entityOrLinkOrHref, cacheKey, new Map());
 
 		const tokenValues = registrations.get(listener);
 		if (!tokenValues) {
