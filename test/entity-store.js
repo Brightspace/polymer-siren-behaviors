@@ -143,6 +143,42 @@ suite('entity-store', function() {
 			));
 		});
 
+		suite('nofollow siren links differ from href with token', () => {
+			async function _test(sirenLinkOrHrefFetched, sirenLinkOrHrefGetted) {
+				const token = 'sometoken';
+
+				const fetched = await window.D2L.Siren.EntityStore.fetch(sirenLinkOrHrefFetched, token);
+				expect(fetched).to.exist;
+
+				const getted = await window.D2L.Siren.EntityStore.get(sirenLinkOrHrefGetted, token);
+				expect(getted).to.be.null;
+			}
+
+			const HREF = 'static-data/rubrics/organizations/text-only/199/groups/176/criteria/623/0.json';
+
+			test('with string href and siren link', () => _test(HREF, { href: HREF, rel: ['nofollow'] }));
+			test('with siren link and string href', () => _test({ href: HREF, rel: ['nofollow'] }, HREF));
+		});
+
+		test('fetch with nofollow does not attach auth', async() => {
+			sandbox.spy(window.d2lfetch, 'removeTemp');
+			sandbox.spy(window.d2lfetch.__proto__, 'fetch');
+
+			const href = 'static-data/rubrics/organizations/text-only/199/groups/176/criteria/623/0.json';
+
+			await window.D2L.Siren.EntityStore.fetch({
+				href,
+				rel: ['nofollow'],
+			}, 'sometoken');
+
+			sinon.assert.calledWith(window.d2lfetch.removeTemp, 'auth');
+			sinon.assert.calledWith(window.d2lfetch.fetch, href, sinon.match({
+				headers: sinon.match(headers => {
+					return headers.get('Authorization') === null;
+				}),
+			}));
+		});
+
 		test('handles entity error using listener', function(done) {
 			window.D2L.Siren.EntityStore.addListener(
 				'static-data/rubrics/organizations/text-only/199/groups/176/criteria/623/UNKNOWN1.json',

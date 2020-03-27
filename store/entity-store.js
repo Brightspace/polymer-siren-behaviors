@@ -59,10 +59,24 @@ window.D2L.Siren.EntityStore = {
 		return;
 	},
 
+	_shouldAttachToken(sirenLinkOrHref) {
+		const rel = sirenLinkOrHref && sirenLinkOrHref.rel;
+		if (!Array.isArray(rel)) {
+			return true;
+		}
+
+		const isNoFollow = -1 !== rel.indexOf('nofollow');
+		if (isNoFollow) {
+			return false;
+		}
+
+		return true;
+	},
+
 	addListener: function(sirenLinkOrHref, token, listener) {
 		const href = this._getHref(sirenLinkOrHref);
 
-		return this.getToken(token).then(function(resolved) {
+		return this.getToken(token, sirenLinkOrHref).then(function(resolved) {
 			const cacheKey = resolved.cacheKey;
 			const tokenValue = resolved.tokenValue;
 
@@ -90,7 +104,14 @@ window.D2L.Siren.EntityStore = {
 		this._invalidationListeners.delete(listener);
 	},
 
-	getToken: function(token) {
+	getToken: function(token, sirenLinkOrHref) {
+		if (!this._shouldAttachToken(sirenLinkOrHref)) {
+			return Promise.resolve({
+				cacheKey: '',
+				tokenValue: '',
+			});
+		}
+
 		const tokenPromise = (typeof (token) === 'function')
 			? token()
 			: Promise.resolve(token);
@@ -150,7 +171,7 @@ window.D2L.Siren.EntityStore = {
 			return Promise.reject(new Error('Cannot fetch undefined entityId'));
 		}
 
-		return this.getToken(token).then(function(resolved) {
+		return this.getToken(token, sirenLinkOrHref).then(function(resolved) {
 
 			const cacheKey = resolved.cacheKey;
 			const tokenValue = resolved.tokenValue;
@@ -161,14 +182,20 @@ window.D2L.Siren.EntityStore = {
 			if (!entity || bypassCache) {
 				const headers = new Headers();
 
-				tokenValue && headers.set('Authorization', 'Bearer ' + tokenValue);
+				const shouldAttachToken = this._shouldAttachToken(sirenLinkOrHref);
+
+				shouldAttachToken && tokenValue && headers.set('Authorization', 'Bearer ' + tokenValue);
 
 				if (bypassCache) {
 					headers.set('pragma', 'no-cache');
 					headers.set('cache-control', 'no-cache');
 				}
 
-				const request = window.d2lfetch.fetch(href, {
+				const fetch = shouldAttachToken
+					? window.d2lfetch
+					: window.d2lfetch.removeTemp('auth');
+
+				const request = fetch.fetch(href, {
 					headers: headers
 				})
 					.then(checkResponse)
@@ -212,7 +239,7 @@ window.D2L.Siren.EntityStore = {
 	},
 
 	get: function(sirenLinkOrHref, token) {
-		return this.getToken(token).then(function(resolved) {
+		return this.getToken(token, sirenLinkOrHref).then(function(resolved) {
 			const cacheKey = resolved.cacheKey;
 
 			const entity = this._initContainer(this._store, sirenLinkOrHref, cacheKey);
@@ -230,7 +257,7 @@ window.D2L.Siren.EntityStore = {
 			return Promise.reject(new Error('Cannot fetch undefined entityId'));
 		}
 
-		return this.getToken(token).then(function(resolved) {
+		return this.getToken(token, sirenLinkOrHref).then(function(resolved) {
 			const cacheKey = resolved.cacheKey;
 			const normalizedHref = href.toLowerCase();
 
@@ -291,7 +318,7 @@ window.D2L.Siren.EntityStore = {
 			return Promise.reject(new Error('Cannot fetch undefined entityId'));
 		}
 
-		return this.getToken(token).then(function(resolved) {
+		return this.getToken(token, sirenLinkOrHref).then(function(resolved) {
 			const cacheKey = resolved.cacheKey;
 			const normalizedHref = href.toLowerCase();
 			this._initContainer(this._store, normalizedHref, cacheKey);
@@ -301,7 +328,7 @@ window.D2L.Siren.EntityStore = {
 	},
 
 	setError: function(sirenLinkOrHref, token, error) {
-		return this.getToken(token).then(function(resolved) {
+		return this.getToken(token, sirenLinkOrHref).then(function(resolved) {
 			const cacheKey = resolved.cacheKey;
 
 			const normalizedHref = this._getHref(sirenLinkOrHref).toLowerCase();
@@ -319,7 +346,7 @@ window.D2L.Siren.EntityStore = {
 	},
 
 	removeListener: function(sirenLinkOrHref, token, listener) {
-		return this.getToken(token).then(function(resolver) {
+		return this.getToken(token, sirenLinkOrHref).then(function(resolver) {
 			return this._removeListenerWithResolvedToken(sirenLinkOrHref, resolver, listener);
 		}.bind(this));
 	},
