@@ -2,13 +2,13 @@
     "class": ["collection"],
     "entities": [{
         "rel": ["item"],
-        "href": "static-data/simple-collection/items/0.json"
+        "href": "test/static-data/simple-collection/items/0.json"
     }, {
         "rel": ["item"],
-        "href": "static-data/simple-collection/items/1.json"
+        "href": "test/static-data/simple-collection/items/1.json"
     }],
     "links": [{
         "rel": ["self"],
-        "href": "static-data/simple-collection/collection.json"
+        "href": "test/static-data/simple-collection/collection.json"
     }]
 }

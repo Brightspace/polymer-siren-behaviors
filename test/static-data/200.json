@@ -26,31 +26,31 @@
             "rel": [
                 "self"
             ],
-            "href": "static-data/200.json"
+            "href": "test/static-data/200.json"
         },
         {
             "rel": [
                 "up"
             ],
-            "href": "static-data.json"
+            "href": "test/static-data.json"
         },
         {
             "rel": [
                 "https://rubrics.api.brightspace.com/rels/criteria-groups"
             ],
-            "href": "static-data/200/groups.json"
+            "href": "test/static-data/200/groups.json"
         },
         {
             "rel": [
                 "https://api.brightspace.com/rels/organization"
             ],
-            "href": "static-data.json"
+            "href": "test/static-data.json"
         },
         {
             "rel": [
                 "https://rubrics.api.brightspace.com/rels/overall-levels"
             ],
-            "href": "static-data/200/overallLevels.json"
+            "href": "test/static-data/200/overallLevels.json"
         }
     ]
 }
