@@ -8,10 +8,10 @@
         },
         "links": [{
             "rel": ["collection"],
-            "href": "static-data/simple-collection/collection.json"
+            "href": "test/static-data/simple-collection/collection.json"
         }, {
             "rel": ["self"],
-            "href": "static-data/simple-collection/items/0.json"
+            "href": "test/static-data/simple-collection/items/0.json"
         }]
     }, {
         "rel": ["https://api.brightspace.com/rel/cache-primer"],
@@ -21,14 +21,14 @@
         },
         "links": [{
             "rel": ["collection"],
-            "href": "static-data/simple-collection/collection.json"
+            "href": "test/static-data/simple-collection/collection.json"
         }, {
             "rel": ["self"],
-            "href": "static-data/simple-collection/items/1.json"
+            "href": "test/static-data/simple-collection/items/1.json"
         }]
     }],
     "links": [{
         "rel": ["self"],
-        "href": "static-data/simple-collection/cache-primer.json"
+        "href": "test/static-data/simple-collection/cache-primer.json"
     }]
 }

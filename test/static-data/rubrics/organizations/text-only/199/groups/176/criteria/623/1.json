@@ -19,7 +19,7 @@
               {
                 "name": "update",
                 "method": "PUT",
-                "href": "static-data/rubrics/organizations/text-only/199/groups/176/criteria/623/1.json?foo=bar",
+                "href": "test/static-data/rubrics/organizations/text-only/199/groups/176/criteria/623/1.json?foo=bar",
                 "fields": [
                   {
                     "type": "text",
@@ -51,7 +51,7 @@
               {
                 "name": "update",
                 "method": "PUT",
-                "href": "static-data/rubrics/organizations/text-only/199/groups/176/criteria/623/1.json?foo=bar",
+                "href": "test/static-data/rubrics/organizations/text-only/199/groups/176/criteria/623/1.json?foo=bar",
                 "fields": [
                   {
                     "type": "hidden",
@@ -73,19 +73,19 @@
             "rel": [
                 "https://rubrics.api.brightspace.com/rels/level"
             ],
-            "href": "static-data/rubrics/organizations/text-only/199/groups/176/levels/1476.json"
+            "href": "test/static-data/rubrics/organizations/text-only/199/groups/176/levels/1476.json"
         },
         {
             "rel": [
                 "self"
             ],
-            "href": "static-data/rubrics/organizations/text-only/199/groups/176/criteria/623/1.json?foo=bar"
+            "href": "test/static-data/rubrics/organizations/text-only/199/groups/176/criteria/623/1.json?foo=bar"
         },
         {
             "rel": [
                 "up"
             ],
-            "href": "static-data/rubrics/organizations/text-only/199/groups/176/criteria/623.json"
+            "href": "test/static-data/rubrics/organizations/text-only/199/groups/176/criteria/623.json"
         }
     ]
 }

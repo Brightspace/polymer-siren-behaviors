@@ -20,9 +20,9 @@ D2L.PolymerBehaviors.Siren.SirenActionBehaviorImpl = {
 		var fields = [];
 		if (action.method === 'GET' || action.method === 'HEAD') {
 			for (var param in url.searchParams.entries()) {
-				fields.push({name: param[0], value: param[1]});
+				fields.push({ name: param[0], value: param[1] });
 			}
-		// Disable URLSearchParams until they are fully supported (i.e. Edge)
+			// Disable URLSearchParams until they are fully supported (i.e. Edge)
 		/*
 		} else if (window.URLSearchParams && action.type === 'application/x-www-form-urlencoded') {
 			fields = new URLSearchParams();
@@ -35,7 +35,7 @@ D2L.PolymerBehaviors.Siren.SirenActionBehaviorImpl = {
 					return;
 				}
 				// if the field is specified multiple times, assume it is intentional
-				fields.push({name: field.name, value: field.value});
+				fields.push({ name: field.name, value: field.value });
 			});
 		}
 		return fields;
@@ -78,7 +78,7 @@ D2L.PolymerBehaviors.Siren.SirenActionBehaviorImpl = {
 		if (action.fields && action.fields.forEach) {
 			action.fields.forEach(function(field) {
 				if (field.type === 'hidden' && field.value !== undefined) {
-					fields.push({name: field.name, value:field.value});
+					fields.push({ name: field.name, value:field.value });
 				}
 			});
 		}
@@ -91,12 +91,12 @@ D2L.PolymerBehaviors.Siren.SirenActionBehaviorImpl = {
 		var self = this;
 
 		if (sendSaveEvent) {
-			self.dispatchEvent(new CustomEvent('d2l-siren-entity-save-start', {bubbles: true, composed: true}));
+			self.dispatchEvent(new CustomEvent('d2l-siren-entity-save-start', { bubbles: true, composed: true }));
 		}
 		return window.d2lfetch.fetch(href, opts)
 			.then(function(resp) {
 				if (sendSaveEvent && resp.ok) {
-					self.dispatchEvent(new CustomEvent('d2l-siren-entity-save-end', {bubbles: true, composed: true}));
+					self.dispatchEvent(new CustomEvent('d2l-siren-entity-save-end', { bubbles: true, composed: true }));
 				}
 				return resp;
 			})
@@ -128,7 +128,7 @@ D2L.PolymerBehaviors.Siren.SirenActionBehaviorImpl = {
 				});
 			})
 			.catch(function(reason) {
-				self.dispatchEvent(new CustomEvent('d2l-siren-entity-save-error', {detail:{ error: reason }, bubbles:true, composed:true}));
+				self.dispatchEvent(new CustomEvent('d2l-siren-entity-save-error', { detail:{ error: reason }, bubbles:true, composed:true }));
 				throw reason;
 			});
 	},
