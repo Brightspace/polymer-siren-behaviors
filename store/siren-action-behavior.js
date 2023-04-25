@@ -102,11 +102,11 @@ D2L.PolymerBehaviors.Siren.SirenActionBehaviorImpl = {
 			})
 			.then(function(resp) {
 				if (!resp.ok) {
-					var errMsg = resp.statusText + ' response executing ' + opts.method + ' on ' + href + '.';
+					const errMsg = `${resp.status} response executing ${opts.method} on ${href}`;
 					return resp.json().then(function(data) {
-						throw { json: data, message: errMsg };
+						throw { json: data, message: `${errMsg}: ${JSON.stringify(data)}` };
 					}, function(data) {
-						throw { string: data, message: errMsg };
+						throw { string: data, message: `${errMsg}: ${data}` };
 					});
 				}
 				var linkHeader = resp.headers ? resp.headers.get('Link') : null;
