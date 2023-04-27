@@ -28,7 +28,7 @@
     "eslint-plugin-sort-class-members": "^1",
     "sinon": "^14"
   },
-  "version": "1.6.0",
+  "version": "1.6.1",
   "files": [
     "/store",
     "entity-loading-behavior.js",
