@@ -102,7 +102,7 @@ D2L.PolymerBehaviors.Siren.SirenActionBehaviorImpl = {
 			})
 			.then(function(resp) {
 				if (!resp.ok) {
-					resp.text().then(function(data) {
+					return resp.text().then(function(data) {
 						return JSON.stringify(data);
 					}).then(function(body) {
 						throw {
