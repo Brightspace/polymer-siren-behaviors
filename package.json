@@ -38,6 +38,6 @@
     "@polymer/polymer": "^3.0.0",
     "d2l-fetch": "^2",
     "fastdom": "^1.0.8",
-    "siren-parser": "^8.0.0"
+    "siren-parser": "^9"
   }
 }
